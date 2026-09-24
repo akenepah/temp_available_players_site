@@ -225,17 +225,20 @@ button:disabled {
   opacity: 0.95;
 }
 
-/* Back-view player artwork, standing in front of the mountains in the space
-   the approved design gives it (between the title and the pines). */
+/* Back-view player artwork. Its cream ground is feathered on the left (behind
+   the end of the title) and at the bottom so it settles into the paper. */
 .hero__players {
   position: absolute;
+  right: max(0px, calc((100% - 1440px) / 2));
   bottom: 0;
-  right: calc(max(0px, (100% - 1440px) / 2) + 290px);
-  height: 250px;
-  width: auto;
-  max-width: calc(100% - 760px);
-  object-fit: contain;
-  object-position: right bottom;
+  width: min(816px, calc(100% - 640px));
+  height: 100%;
+  object-fit: cover;
+  object-position: 55% bottom;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14%), linear-gradient(to bottom, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 14%), linear-gradient(to bottom, #000 88%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
 }
 
 /* --------------------------------------------------------------- Summary */
@@ -1346,10 +1349,11 @@ button:disabled {
     --gutter: 32px;
   }
 
+  /* Narrower hero: scale by width so all three players stay in frame. */
   .hero__players {
-    right: 220px;
-    height: 210px;
-    max-width: calc(100% - 620px);
+    width: calc(100% - 560px);
+    height: auto;
+    object-fit: contain;
   }
 
   .hero__title {
@@ -1411,9 +1415,7 @@ button:disabled {
   }
 
   .hero__players {
-    right: 120px;
-    height: 170px;
-    max-width: calc(100% - 500px);
+    width: calc(100% - 480px);
   }
 
   .hero__mountains,
@@ -1489,11 +1491,13 @@ button:disabled {
   }
 
   .hero__players {
-    left: 0;
-    right: auto;
-    height: 160px;
-    max-width: 70%;
-    object-position: left bottom;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 28% bottom;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 86%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 86%, transparent 100%);
   }
 
   .hero__mountains {

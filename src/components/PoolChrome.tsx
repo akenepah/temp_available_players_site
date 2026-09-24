@@ -8,12 +8,16 @@ export function PlayerRegistryHero() {
   return (
     <header className="hero">
       <div className="hero__art" aria-hidden="true">
-        <span className="hero__mountains" />
-        <span className="hero__pines" />
         {SITE.heroPlayersSrc ? (
+          // The artwork carries its own mountains and pines, so it replaces the engravings.
           // eslint-disable-next-line @next/next/no-img-element
-          <img className="hero__players" src={SITE.heroPlayersSrc} alt="" fetchPriority="high" />
-        ) : null}
+          <img className="hero__players" src={SITE.heroPlayersSrc} alt="" width={1632} height={544} fetchPriority="high" />
+        ) : (
+          <>
+            <span className="hero__mountains" />
+            <span className="hero__pines" />
+          </>
+        )}
       </div>
       <div className="hero__inner">
         <div className="hero__topline">

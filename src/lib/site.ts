@@ -6,10 +6,9 @@ export const SITE = {
   draftSeason: "2026-27",
   statsSeason: "2025-26",
   /**
-   * Back-view three-player artwork (Celebrini #71, McKenna #92, Hutson #48)
-   * layered in front of the mountain/pine engravings. Not supplied yet: set to
-   * its public path (e.g. "/brand/hero-players-back.png", a transparent PNG or
-   * WebP with no text) once added. The hero renders cleanly without it.
+   * Approved back-view three-player artwork (Celebrini #71, McKenna #92,
+   * Hutson #48) with its own mountains and pines. Set to null to fall back to
+   * the mountain/pine engravings.
    */
-  heroPlayersSrc: null as string | null,
+  heroPlayersSrc: "/brand/hero-players-back.webp" as string | null,
 };
