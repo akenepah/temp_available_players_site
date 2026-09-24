@@ -33,11 +33,15 @@ function Chevron() {
 export function PoolControls({ query, isMobile, filtersOpen, onTypeChange, onSearchChange, onOpenFilters, onOpenSort, onReset }: Props) {
   const team = getNhlTeam(query.filters.team);
   const teamLabel = team ? team.shortName : "All teams";
-  const positionLabel = query.filters.position
-    ? POSITION_LABELS[query.filters.position]
-    : query.type === "goalie"
+  const { positions } = query.filters;
+  const positionLabel =
+    query.type === "goalie"
       ? "Goalies"
-      : "All positions";
+      : positions.length === 0
+        ? "All positions"
+        : positions.length === 1
+          ? POSITION_LABELS[positions[0]!]
+          : positions.join(" + ");
 
   return (
     <div className="controls">

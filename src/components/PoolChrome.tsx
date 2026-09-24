@@ -1,4 +1,4 @@
-import { formatDate, formatSeason, UNAVAILABLE } from "@/lib/pool/format";
+import { formatDate, formatSeason, formatSeasonLong, UNAVAILABLE } from "@/lib/pool/format";
 import { SITE } from "@/lib/site";
 import type { PoolSnapshot } from "@/lib/pool/types";
 
@@ -8,30 +8,25 @@ export function PlayerRegistryHero({ updatedAt }: { updatedAt: string | null }) 
   return (
     <header className="hero">
       <div className="hero__art" aria-hidden="true">
-        {/* The approved player collage is not yet in the repository (see README). The
-            mountain and pine engravings are the approved illustration assets. */}
         {SITE.heroCollageSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img className="hero__collage" src={SITE.heroCollageSrc} alt="" />
-        ) : null}
-        <span className="hero__mountains" />
-        <span className="hero__pines" />
+          <img className="hero__collage" src={SITE.heroCollageSrc} alt="" width={911} height={938} fetchPriority="high" />
+        ) : (
+          <>
+            <span className="hero__mountains" />
+            <span className="hero__pines" />
+          </>
+        )}
       </div>
       <div className="hero__inner">
         <div className="hero__topline">
           <p className="hero__identity">
             <span className="hero__brand">Farm to Fame</span>
-            <span className="hero__sub">
-              <span aria-hidden="true">→ </span>Fantasy Hockey
-            </span>
+            <span className="hero__registry">{formatSeasonLong(SITE.draftSeason)} Player Registry</span>
           </p>
           <p className="hero__draft">
             <span className="hero__draft-label">{draft} Draft</span>
             {updatedAt ? <span className="hero__updated">Updated · {formatDate(updatedAt)}</span> : null}
-          </p>
-          <p className="hero__registry" aria-label={`${draft} Player Registry`}>
-            <span>{draft}</span>
-            <span>Player Registry</span>
           </p>
         </div>
         <h1 className="hero__title">Available Players</h1>
@@ -44,33 +39,9 @@ export function PlayerRegistryHero({ updatedAt }: { updatedAt: string | null }) 
   );
 }
 
-export function ReturningPoolNotice({ snapshot }: { snapshot: PoolSnapshot | null }) {
-  const selection = snapshot?.commissionerSelection ?? null;
-  const draft = formatSeason(snapshot?.draftSeason ?? SITE.draftSeason);
-  return (
-    <section className="notice" aria-label="Returning draft pool notice">
-      <svg className="notice__icon" viewBox="0 0 32 32" aria-hidden="true">
-        <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" strokeWidth="2.25" />
-        <rect x="14.75" y="8" width="2.5" height="11" rx="1" fill="currentColor" />
-        <circle cx="16" cy="23" r="1.6" fill="currentColor" />
-      </svg>
-      <h2 className="notice__title">{draft} Returning Draft Pool</h2>
-      {selection ? (
-        <>
-          <p className="notice__text notice__text--desktop">
-            Includes {selection.franchise.name}’s {selection.returnCount} returns using commissioner-selected keepers.
-          </p>
-          <p className="notice__text notice__text--mobile">{selection.franchise.name}: commissioner-selected keepers.</p>
-        </>
-      ) : null}
-    </section>
-  );
-}
-
 export function PoolSummary({ snapshot }: { snapshot: PoolSnapshot | null }) {
   const total = snapshot ? String(snapshot.players.length) : UNAVAILABLE;
   const decisions = snapshot ? `${snapshot.keeperDecisions.completed}/${snapshot.keeperDecisions.total}` : UNAVAILABLE;
-  const pick = snapshot ? (snapshot.commissionerSelection?.franchise.name ?? "None") : UNAVAILABLE;
   const updated = snapshot ? formatDate(snapshot.updatedAt) : UNAVAILABLE;
   return (
     <dl className="summary" aria-label="Pool summary">
@@ -81,10 +52,6 @@ export function PoolSummary({ snapshot }: { snapshot: PoolSnapshot | null }) {
       <div className="summary__item summary__item--count">
         <dt>Keeper decisions</dt>
         <dd>{decisions}</dd>
-      </div>
-      <div className="summary__item">
-        <dt>Commissioner pick</dt>
-        <dd>{pick}</dd>
       </div>
       <div className="summary__item">
         <dt>Last updated</dt>

@@ -152,6 +152,6 @@ export const FIXTURE_SNAPSHOT = {
   updatedAt: "2026-09-23",
   adpCheckedAt: "2026-09-23",
   keeperDecisions: { completed: 10, total: 10 },
-  commissionerSelection: { franchiseId: "purple-reign", returnCount: 15 },
+  commissionerSelection: null,
   players: [...named, ...filler()],
 };

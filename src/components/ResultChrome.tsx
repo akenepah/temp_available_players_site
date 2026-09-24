@@ -9,30 +9,41 @@ export function playerNoun(type: PlayerType, count: number): string {
   return count === 1 ? noun : `${noun}s`;
 }
 
-interface Chip {
-  key: keyof Filters;
+export interface Chip {
+  id: string;
   label: string;
+  /** Short form for the result summary line, e.g. "LW". */
+  short: string;
+  /** The filters with only this chip removed. */
+  without: (filters: Filters) => Filters;
 }
 
 export function filterChips(filters: Filters): Chip[] {
   const chips: Chip[] = [];
   const team = getNhlTeam(filters.team);
-  if (team) chips.push({ key: "team", label: team.shortName });
-  if (filters.position) chips.push({ key: "position", label: POSITION_LABELS[filters.position] });
+  if (team) chips.push({ id: "team", label: team.name, short: team.shortName, without: (f) => ({ ...f, team: null }) });
+  for (const position of filters.positions) {
+    chips.push({
+      id: `position-${position}`,
+      label: POSITION_LABELS[position],
+      short: position,
+      without: (f) => ({ ...f, positions: f.positions.filter((p) => p !== position) }),
+    });
+  }
   const franchise = FRANCHISES.find((f) => f.id === filters.franchise);
-  if (franchise) chips.push({ key: "franchise", label: franchise.name });
+  if (franchise) chips.push({ id: "franchise", label: franchise.name, short: franchise.name, without: (f) => ({ ...f, franchise: null }) });
   return chips;
 }
 
 export function AppliedFilterChips({
   filters,
   count,
-  onRemove,
+  onChange,
   onClearAll,
 }: {
   filters: Filters;
   count: number;
-  onRemove: (key: keyof Filters) => void;
+  onChange: (filters: Filters) => void;
   onClearAll: () => void;
 }) {
   const chips = filterChips(filters);
@@ -44,8 +55,8 @@ export function AppliedFilterChips({
       </p>
       <ul className="chips__list">
         {chips.map((chip) => (
-          <li key={chip.key}>
-            <button type="button" className="btn btn--chip" onClick={() => onRemove(chip.key)} aria-label={`Remove filter ${chip.label}`}>
+          <li key={chip.id}>
+            <button type="button" className="btn btn--chip" onClick={() => onChange(chip.without(filters))} aria-label={`Remove filter ${chip.label}`}>
               {chip.label} <span aria-hidden="true">×</span>
             </button>
           </li>

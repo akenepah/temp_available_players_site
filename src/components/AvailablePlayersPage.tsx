@@ -30,7 +30,6 @@ import {
   PoolErrorState,
   PoolLoadingState,
   PoolSummary,
-  ReturningPoolNotice,
   SiteFooter,
 } from "./PoolChrome";
 import { AvailablePlayerMobileTable, AvailablePlayerTable } from "./PlayerTables";
@@ -53,7 +52,7 @@ export function resultSummary(query: PoolQuery, count: number): string {
   if (query.search.trim() || hasActiveFilters(query.filters)) {
     const labels = query.search.trim()
       ? []
-      : filterChips(query.filters).map((chip) => (chip.key === "position" ? query.filters.position! : chip.label));
+      : filterChips(query.filters).map((chip) => chip.short);
     const text = [resultCountText(query, count), ...labels].join(" · ");
     return sortIsDefault ? text : `${text} · ${sortText}`;
   }
@@ -134,7 +133,6 @@ export function AvailablePlayersPage() {
       <div className="page__content" inert={modalOpen}>
         <PlayerRegistryHero updatedAt={snapshot?.updatedAt ?? null} />
         <main className="container" id="main">
-          <ReturningPoolNotice snapshot={snapshot} />
           <PoolSummary snapshot={snapshot} />
           <div className="controls-wrap">
             <PoolControls
@@ -168,7 +166,7 @@ export function AvailablePlayersPage() {
             <AppliedFilterChips
               filters={query.filters}
               count={results.length}
-              onRemove={(key) => setFilters({ ...query.filters, [key]: null })}
+              onChange={setFilters}
               onClearAll={() => setFilters(EMPTY_FILTERS)}
             />
           ) : null}

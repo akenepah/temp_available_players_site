@@ -7,6 +7,13 @@ export function formatSeason(season: string): string {
   return season.replace("-", "–");
 }
 
+/** "2026-27" → "2026–2027". */
+export function formatSeasonLong(season: string): string {
+  const [start, end] = season.split("-");
+  if (!start || !end || start.length !== 4) return formatSeason(season);
+  return `${start}–${start.slice(0, 4 - end.length)}${end}`;
+}
+
 /** "2026-09-23" → "Sep 23, 2026". Parsed as a calendar date, never shifted by time zone. */
 export function formatDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-").map(Number);

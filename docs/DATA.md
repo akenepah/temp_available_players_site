@@ -29,10 +29,9 @@ only and must never be copied into `public/data/`.
   "updatedAt": "YYYY-MM-DD",         // "Last updated" / hero "Updated ·"
   "adpCheckedAt": "YYYY-MM-DD",      // "ADP checked …" / footer date
   "keeperDecisions": { "completed": 10, "total": 10 },
-  "commissionerSelection": {          // or null → no commissioner notice text, "None" in summary
-    "franchiseId": "purple-reign",
-    "returnCount": 15                 // "Includes Purple Reign’s 15 returns …"
-  },
+  "commissionerSelection": null,     // required key; null, or { "franchiseId", "returnCount" }.
+                                      // Validated but not displayed: the finalized 2026–27
+                                      // pool already reflects Purple Reign's outcomes.
   "players": [
     {
       "id": "string, unique",         // stable key; the NHL player id works well

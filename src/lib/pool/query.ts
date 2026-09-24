@@ -10,9 +10,13 @@ export interface Sort {
   direction: SortDirection;
 }
 
+/**
+ * Filter dimensions combine with AND. Within `positions`, selections combine
+ * with OR; an empty list means "All positions" (no positional restriction).
+ */
 export interface Filters {
   team: string | null;
-  position: Position | null;
+  positions: Position[];
   franchise: string | null;
 }
 
@@ -24,7 +28,7 @@ export interface PoolQuery {
 }
 
 export const DEFAULT_SORT: Sort = { key: "adp", direction: "asc" };
-export const EMPTY_FILTERS: Filters = { team: null, position: null, franchise: null };
+export const EMPTY_FILTERS: Filters = { team: null, positions: [], franchise: null };
 
 export const DESKTOP_PAGE_SIZE = 8;
 export const MOBILE_PAGE_SIZE = 6;
@@ -116,7 +120,7 @@ export function matchesSearch(player: Player, search: string): boolean {
 
 export function matchesFilters(player: Player, filters: Filters): boolean {
   if (filters.team !== null && player.nhlTeam?.abbrev !== filters.team) return false;
-  if (filters.position !== null && player.position !== filters.position) return false;
+  if (filters.positions.length > 0 && !filters.positions.includes(player.position)) return false;
   if (filters.franchise !== null && player.previousFranchise.id !== filters.franchise) return false;
   return true;
 }
@@ -163,13 +167,12 @@ export function countOfType(players: readonly Player[], type: PlayerType): numbe
 /** Switches player type, keeping search/team/franchise and dropping anything invalid for the new type. */
 export function switchType(query: PoolQuery, type: PlayerType): PoolQuery {
   if (type === query.type) return query;
-  const position = query.filters.position;
-  const positionValid = position === null || (type === "goalie" ? position === "G" : position !== "G");
+  const valid = positionsFor(type);
   const sortValid = sortKeysFor(type).includes(query.sort.key);
   return {
     type,
     search: query.search,
-    filters: { ...query.filters, position: positionValid ? position : null },
+    filters: { ...query.filters, positions: query.filters.positions.filter((position) => valid.includes(position)) },
     sort: sortValid ? query.sort : DEFAULT_SORT,
   };
 }
@@ -178,8 +181,14 @@ export function positionsFor(type: PlayerType): Position[] {
   return type === "goalie" ? ["G"] : [...SKATER_POSITIONS];
 }
 
+/** Toggles one position in a multi-select, keeping the canonical LW, C, RW, D order. */
+export function togglePosition(positions: readonly Position[], position: Position, order: readonly Position[]): Position[] {
+  const next = positions.includes(position) ? positions.filter((p) => p !== position) : [...positions, position];
+  return order.filter((p) => next.includes(p));
+}
+
 export function hasActiveFilters(filters: Filters): boolean {
-  return filters.team !== null || filters.position !== null || filters.franchise !== null;
+  return filters.team !== null || filters.positions.length > 0 || filters.franchise !== null;
 }
 
 export interface Page<T> {

@@ -17,6 +17,38 @@ test.describe("Available Players", () => {
     await expect(page.getByText(/sign in/i)).toHaveCount(0);
   });
 
+  test("publishes social share metadata with the approved share image", async ({ page, request }) => {
+    await serveFixture(page);
+    await page.goto("/");
+    const meta = (selector: string) => page.locator(selector).getAttribute("content");
+    expect(await page.title()).toBe("Available Players | Farm to Fame");
+    expect(await meta('meta[property="og:title"]')).toBe("Available Players | Farm to Fame");
+    expect(await meta('meta[property="og:description"]')).toContain("142 returning players");
+    expect(await meta('meta[property="og:url"]')).toBe("https://players.farmtofame.com");
+    expect(await meta('meta[name="twitter:card"]')).toBe("summary_large_image");
+    const image = await meta('meta[property="og:image"]');
+    expect(image).toBe("https://players.farmtofame.com/brand/og-available-players.jpg");
+    expect(await page.locator('link[rel="canonical"]').getAttribute("href")).toBe("https://players.farmtofame.com");
+    const asset = await request.get("/brand/og-available-players.jpg");
+    expect(asset.status()).toBe(200);
+    expect(asset.headers()["content-type"]).toContain("image/jpeg");
+  });
+
+  test("tiles the paper texture behind the entire page and shows the hero artwork", async ({ page }) => {
+    await serveFixture(page);
+    await page.goto("/");
+    const background = await page.evaluate(() => {
+      const style = getComputedStyle(document.documentElement);
+      return { image: style.backgroundImage, repeat: style.backgroundRepeat, body: getComputedStyle(document.body).backgroundColor };
+    });
+    expect(background.image).toContain("/brand/paper-texture.webp");
+    expect(background.repeat).toBe("repeat");
+    expect(background.body).toBe("rgba(0, 0, 0, 0)");
+    const art = page.locator(".hero__collage");
+    await expect(art).toHaveAttribute("src", "/brand/hero-players.webp");
+    expect(await art.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+  });
+
   test("/available-players redirects to /", async ({ page }) => {
     await serveFixture(page);
     await page.goto("/available-players");

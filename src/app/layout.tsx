@@ -18,9 +18,37 @@ const body = Inter({
   display: "swap",
 });
 
+const TITLE = "Available Players | Farm to Fame";
+const DESCRIPTION =
+  "Explore the 2026–27 Farm to Fame Player Registry — 142 returning players with 2025–26 NHL stats, Yahoo ADP, filters, and player profiles.";
+const SHARE_IMAGE = {
+  url: "/brand/og-available-players.jpg",
+  width: 1200,
+  height: 671,
+  alt: "Farm to Fame 2026–2027 Player Registry: Available Players, with Macklin Celebrini, Lane Hutson and Gavin McKenna",
+};
+
 export const metadata: Metadata = {
-  title: "Available Players · Farm to Fame",
-  description: "Players returning to the Farm to Fame 2026–27 draft, with 2025–26 NHL statistics and Yahoo ADP.",
+  // Share cards and the canonical link need absolute URLs; this is the site's
+  // public address, not an input to page behaviour.
+  metadataBase: new URL("https://players.farmtofame.com"),
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "Farm to Fame",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [SHARE_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [SHARE_IMAGE],
+  },
 };
 
 export const viewport: Viewport = {

@@ -36,17 +36,20 @@ pnpm exec tsx -e 'import {FIXTURE_SNAPSHOT as s} from "./tests/fixtures/pool"; r
 - `src/lib/pool/`: snapshot contract (`types`, `validate`), reference data
   (NHL teams, canonical franchise names), and search/filter/sort/pagination
   logic (`query`).
-- `src/components/`: page chrome (hero, notice, summary, states), controls,
+- `src/components/`: page chrome (hero, summary, states), controls,
   filter panel/screen, sort screen, desktop and mobile tables, player profile
   (desktop drawer and mobile full-screen sheet).
 - `public/brand/`: web-optimised copies of the approved paper texture and
   mountain/pine engravings.
 
-## Known asset gap
+## Hero and share artwork
 
-The approved hero **player collage** (Celebrini / McKenna / Hutson with
-"Scouting the pool") has not been supplied as a standalone file. Add it to
-`public/brand/` and set `heroCollageSrc` in `src/lib/site.ts`.
+`public/brand/og-available-players.jpg` is the approved three-player share card
+(Celebrini #71, Hutson #48, McKenna #92) at 1200×671, used for Open Graph and
+Twitter previews. `public/brand/hero-players.webp` is the artwork region of that
+same card, cropped clear of its baked-in text, and shown in the hero
+(`heroCollageSrc` in `src/lib/site.ts`; set it to `null` to fall back to the
+mountain/pine engravings).
 
 ## Deployment
 

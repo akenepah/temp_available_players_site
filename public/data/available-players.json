@@ -8,10 +8,7 @@
     "completed": 10,
     "total": 10
   },
-  "commissionerSelection": {
-    "franchiseId": "purple-reign",
-    "returnCount": 15
-  },
+  "commissionerSelection": null,
   "players": [
     {
       "id": "erik-karlsson",

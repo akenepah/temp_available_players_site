@@ -19,8 +19,8 @@ export interface StatColumn<K extends StatKey = StatKey> {
 /** Desktop/mobile table order. PIM is intentionally not part of this registry. */
 export const SKATER_COLUMNS: readonly StatColumn<SkaterStatKey>[] = [
   { key: "gp", abbr: "GP", tileLabel: "GP", label: "Games played", format: formatCount },
-  { key: "g", abbr: "G", tileLabel: "Goals", label: "Goals", format: formatCount },
-  { key: "a", abbr: "A", tileLabel: "Assists", label: "Assists", format: formatCount },
+  { key: "g", abbr: "G", tileLabel: "G", label: "Goals", format: formatCount },
+  { key: "a", abbr: "A", tileLabel: "A", label: "Assists", format: formatCount },
   { key: "pts", abbr: "PTS", tileLabel: "PTS", label: "Points", format: formatCount },
   { key: "ppp", abbr: "PPP", tileLabel: "PPP", label: "Power-play points", format: formatCount },
   { key: "sog", abbr: "SOG", tileLabel: "SOG", label: "Shots on goal", format: formatCount },
@@ -35,14 +35,11 @@ export const GOALIE_COLUMNS: readonly StatColumn<GoalieStatKey>[] = [
   { key: "svPct", abbr: "SV%", tileLabel: "SV%", label: "Save percentage", format: formatSavePct },
 ];
 
-/** Profile Overview tile order, per the approved profile screens. */
-const SKATER_TILE_ORDER: readonly SkaterStatKey[] = ["pts", "g", "a", "ppp", "gp", "sog", "hit", "blk"];
-
 export function columnsFor(type: PlayerType): readonly StatColumn[] {
   return type === "skater" ? SKATER_COLUMNS : GOALIE_COLUMNS;
 }
 
+/** Profile Overview tiles: skaters read GP · G · A · PTS, then PPP · SOG · HIT · BLK (the table order). */
 export function tileColumnsFor(type: PlayerType): readonly StatColumn[] {
-  if (type === "goalie") return GOALIE_COLUMNS;
-  return SKATER_TILE_ORDER.map((key) => SKATER_COLUMNS.find((column) => column.key === key)!);
+  return type === "goalie" ? GOALIE_COLUMNS : SKATER_COLUMNS;
 }

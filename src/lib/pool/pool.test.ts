@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FIXTURE_SNAPSHOT } from "../../../tests/fixtures/pool";
-import { formatAdp, formatDate, formatSavePct } from "./format";
+import { formatAdp, formatDate, formatSavePct, formatSeasonLong } from "./format";
 import {
   applyQuery,
   DEFAULT_SORT,
@@ -12,9 +12,14 @@ import {
   sortOptionsFor,
   sortPlayers,
   switchType,
+  hasActiveFilters,
+  positionsFor,
+  togglePosition,
+  type Filters,
   type PoolQuery,
 } from "./query";
-import { SKATER_COLUMNS } from "./stats";
+import { FRANCHISES, NHL_TEAMS } from "./reference";
+import { SKATER_COLUMNS, tileColumnsFor } from "./stats";
 import { parseSnapshot, SnapshotValidationError } from "./validate";
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -41,6 +46,13 @@ describe("snapshot parsing", () => {
     const kane = players.find((p) => p.id === "kane")!;
     expect(kane.previousFranchise.name).toBe("McCabe'n It Real Goes Wrong");
     expect(players.some((p) => p.previousFranchise.name === "Jet Blue Holiday")).toBe(false);
+  });
+
+  it("accepts commissionerSelection as null or as a franchise selection", () => {
+    expect(snapshot.commissionerSelection).toBeNull();
+    const raw = clone(FIXTURE_SNAPSHOT) as Record<string, unknown>;
+    raw.commissionerSelection = { franchiseId: "purple-reign", returnCount: 15 };
+    expect(parseSnapshot(raw).commissionerSelection?.franchise.name).toBe("Purple Reign");
   });
 
   it("rejects the whole snapshot on an invalid record instead of dropping it", () => {
@@ -116,27 +128,117 @@ describe("search and filters", () => {
     expect(applyQuery(players, query({ search: "defense" })).every((p) => p.position === "D")).toBe(true);
   });
 
-  it("combines team, position and franchise filters with search", () => {
-    const filtered = applyQuery(players, query({ filters: { team: "MIN", position: "LW", franchise: null } }));
-    expect(filtered.map((p) => p.fullName)).toEqual(["Kirill Kaprizov", "Blake Coleman"]);
-    const narrowed = applyQuery(players, query({ search: "blake", filters: { team: "MIN", position: "LW", franchise: null } }));
-    expect(narrowed.map((p) => p.fullName)).toEqual(["Blake Coleman"]);
-    const withFranchise = applyQuery(players, query({ filters: { team: "MIN", position: "LW", franchise: "f-u-shoresy" } }));
-    expect(withFranchise.map((p) => p.fullName)).toEqual(["Blake Coleman"]);
+  const filtered = (filters: Partial<Filters>, extra: Partial<PoolQuery> = {}) =>
+    applyQuery(players, query({ ...extra, filters: { ...EMPTY_FILTERS, ...filters } }));
+  const skaterCount = players.filter((p) => p.type === "skater").length;
+
+  it("filters by NHL team alone", () => {
+    const result = filtered({ team: "MIN" });
+    expect(result.map((p) => p.fullName)).toEqual(["Kirill Kaprizov", "Brock Faber", "Blake Coleman"]);
   });
 
-  it("drops a skater position and skater sort when switching to goalies, keeping search/team/franchise", () => {
+  it("filters by previous franchise alone", () => {
+    const result = filtered({ franchise: "purple-reign" });
+    expect(result.length).toBeGreaterThan(0);
+    expect(result.every((p) => p.previousFranchise.id === "purple-reign")).toBe(true);
+  });
+
+  it("filters by one position", () => {
+    const result = filtered({ positions: ["D"] });
+    expect(result.length).toBeGreaterThan(0);
+    expect(result.every((p) => p.position === "D")).toBe(true);
+  });
+
+  it("treats multiple positions as OR within the position dimension", () => {
+    const lw = filtered({ positions: ["LW"] }).length;
+    const rw = filtered({ positions: ["RW"] }).length;
+    const both = filtered({ positions: ["LW", "RW"] });
+    expect(both).toHaveLength(lw + rw);
+    expect(new Set(both.map((p) => p.position))).toEqual(new Set(["LW", "RW"]));
+  });
+
+  it("returns every skater when all four positions are selected", () => {
+    expect(filtered({ positions: ["LW", "C", "RW", "D"] })).toHaveLength(skaterCount);
+  });
+
+  it("treats no selected positions as All Positions", () => {
+    expect(filtered({ positions: [] })).toHaveLength(skaterCount);
+  });
+
+  it("combines team with one and with two positions (AND across dimensions)", () => {
+    expect(filtered({ team: "MIN", positions: ["LW"] }).map((p) => p.fullName)).toEqual(["Kirill Kaprizov", "Blake Coleman"]);
+    expect(filtered({ team: "MIN", positions: ["LW", "D"] }).map((p) => p.fullName)).toEqual(["Kirill Kaprizov", "Brock Faber", "Blake Coleman"]);
+    expect(filtered({ team: "MIN", positions: ["C", "RW"] })).toEqual([]);
+  });
+
+  it("combines franchise with position", () => {
+    const result = filtered({ franchise: "the-offensive-otters", positions: ["C"] });
+    expect(result.map((p) => p.fullName)).toContain("Connor Bedard");
+    expect(result.every((p) => p.position === "C" && p.previousFranchise.id === "the-offensive-otters")).toBe(true);
+  });
+
+  it("combines team, franchise and multiple positions", () => {
+    // MIN AND (LW OR RW) AND The Offensive Otters
+    expect(filtered({ team: "MIN", positions: ["LW", "RW"], franchise: "the-offensive-otters" }).map((p) => p.fullName)).toEqual([
+      "Kirill Kaprizov",
+    ]);
+    expect(filtered({ team: "MIN", positions: ["LW", "RW"], franchise: "f-u-shoresy" }).map((p) => p.fullName)).toEqual(["Blake Coleman"]);
+  });
+
+  it("combines search with filters", () => {
+    expect(filtered({ team: "MIN", positions: ["LW"] }, { search: "blake" }).map((p) => p.fullName)).toEqual(["Blake Coleman"]);
+  });
+
+  it("returns an empty result for a team with no available players", () => {
+    expect(filtered({ team: "PHI" })).toEqual([]);
+  });
+
+  it("toggles positions in canonical order and back to All Positions", () => {
+    const order = positionsFor("skater");
+    let positions = togglePosition([], "RW", order);
+    positions = togglePosition(positions, "LW", order);
+    expect(positions).toEqual(["LW", "RW"]);
+    positions = togglePosition(positions, "LW", order);
+    positions = togglePosition(positions, "RW", order);
+    expect(positions).toEqual([]);
+    expect(hasActiveFilters({ ...EMPTY_FILTERS, positions })).toBe(false);
+  });
+
+  it("drops skater positions and skater sort when switching to goalies, keeping search/team/franchise", () => {
     const switched = switchType(
-      query({ search: "x", filters: { team: "TBL", position: "LW", franchise: "weekend-at-beniers" }, sort: { key: "hit", direction: "desc" } }),
+      query({ search: "x", filters: { team: "TBL", positions: ["LW", "RW"], franchise: "weekend-at-beniers" }, sort: { key: "hit", direction: "desc" } }),
       "goalie",
     );
     expect(switched).toEqual({
       type: "goalie",
       search: "x",
-      filters: { team: "TBL", position: null, franchise: "weekend-at-beniers" },
+      filters: { team: "TBL", positions: [], franchise: "weekend-at-beniers" },
       sort: DEFAULT_SORT,
     });
     expect(switchType(query({ sort: { key: "gp", direction: "desc" } }), "goalie").sort.key).toBe("gp");
+  });
+});
+
+describe("filter reference lists", () => {
+  it("offers all 32 current NHL teams regardless of the pool", () => {
+    expect(NHL_TEAMS).toHaveLength(32);
+    expect(new Set(NHL_TEAMS.map((t) => t.abbrev)).size).toBe(32);
+  });
+
+  it("offers exactly the 10 canonical franchises, without Jet Blue Holiday", () => {
+    expect(FRANCHISES.map((f) => f.name)).toEqual([
+      "Bestial Backwoods Delight",
+      "F U Shoresy",
+      "If It Makes You Saad",
+      "Josh’s Team",
+      "McCabe'n It Real Goes Wrong",
+      "Purple Reign",
+      "Stache-ing Ginos",
+      "The Offensive Otters",
+      "Timbitches",
+      "Weekend At Beniers",
+    ]);
+    expect(FRANCHISES.some((f) => /jet blue/i.test(f.name))).toBe(false);
   });
 });
 
@@ -171,8 +273,17 @@ describe("formatting", () => {
     expect(formatSavePct(0.912)).toBe(".912");
   });
 
+  it("formats the registry season with full years", () => {
+    expect(formatSeasonLong("2026-27")).toBe("2026–2027");
+  });
+
   it("formats snapshot dates without time-zone drift", () => {
     expect(formatDate("2026-09-23")).toBe("Sep 23, 2026");
+  });
+
+  it("orders skater profile tiles GP/G/A/PTS then PPP/SOG/HIT/BLK and leaves goalies unchanged", () => {
+    expect(tileColumnsFor("skater").map((c) => c.tileLabel)).toEqual(["GP", "G", "A", "PTS", "PPP", "SOG", "HIT", "BLK"]);
+    expect(tileColumnsFor("goalie").map((c) => c.tileLabel)).toEqual(["GP", "W", "SV", "SV%"]);
   });
 
   it("does not include PIM among skater statistics", () => {

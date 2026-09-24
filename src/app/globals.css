@@ -39,15 +39,20 @@
   box-sizing: border-box;
 }
 
+/* The approved paper texture tiles behind the whole document, however tall it
+   grows. It is set on the root so no plain fallback colour shows below content. */
 html {
   -webkit-text-size-adjust: 100%;
   /* Overlays lock body scroll; reserving the gutter keeps the page from shifting. */
   scrollbar-gutter: stable;
+  min-height: 100%;
+  background: var(--paper) url("/brand/paper-texture.webp") repeat left top / 768px 512px;
 }
 
 body {
   margin: 0;
-  background: var(--paper);
+  min-height: 100vh;
+  background: transparent;
   color: var(--navy);
   font-family: var(--font-body);
   font-size: 14px;
@@ -114,7 +119,6 @@ button:disabled {
   position: relative;
   overflow: hidden;
   height: 272px;
-  background: var(--paper-light) url("/brand/paper-texture.webp") center / cover;
 }
 
 .hero__inner {
@@ -134,7 +138,8 @@ button:disabled {
 .hero__identity {
   display: flex;
   flex-direction: column;
-  width: 272px;
+  gap: 2px;
+  width: 360px;
   font-family: var(--font-display);
   text-transform: uppercase;
 }
@@ -144,12 +149,6 @@ button:disabled {
   font-weight: 800;
   line-height: 1.15;
   letter-spacing: 0.06em;
-}
-
-.hero__sub {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
 }
 
 .hero__draft {
@@ -171,24 +170,17 @@ button:disabled {
   color: var(--navy-muted);
 }
 
+/* Subordinate to FARM TO FAME, but a real label rather than metadata. */
 .hero__registry {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 48px 60px 0 auto;
-  padding: 3px 0;
-  border-top: 1px solid var(--navy);
-  border-bottom: 1px solid var(--navy);
-  font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 17px;
   font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+  color: var(--navy-muted);
 }
 
 .hero__title {
-  margin-top: 26px;
+  margin-top: 62px;
   font-family: var(--font-display);
   font-size: 91px;
   font-weight: 900;
@@ -214,12 +206,21 @@ button:disabled {
   pointer-events: none;
 }
 
+/* Artwork from the approved share card. Its flat cream ground is feathered on
+   the left and bottom so it settles into the paper texture. */
 .hero__collage {
   position: absolute;
-  top: 24px;
-  left: 50%;
-  height: 248px;
-  transform: translateX(-4%);
+  top: 0;
+  right: max(0px, calc((100% - 1440px) / 2));
+  /* Never wider than the space beside the title. */
+  width: min(660px, calc(100% - 760px));
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 38%;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 16%), linear-gradient(to bottom, #000 72%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 16%), linear-gradient(to bottom, #000 72%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
 }
 
 .hero__mountains,
@@ -246,51 +247,12 @@ button:disabled {
   opacity: 0.95;
 }
 
-/* ---------------------------------------------------------------- Notice */
-
-.notice {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-height: 56px;
-  margin-top: 8px;
-  padding: 10px 16px;
-  background: var(--orange);
-  color: var(--white);
-}
-
-.notice__icon {
-  flex: none;
-  width: 30px;
-  height: 30px;
-}
-
-.notice__title {
-  flex: none;
-  margin-right: 18px;
-  font-family: var(--font-display);
-  font-size: 25px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
-}
-
-.notice__text {
-  font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 500;
-}
-
-.notice__text--mobile {
-  display: none;
-}
-
 /* --------------------------------------------------------------- Summary */
 
 .summary {
   display: grid;
-  grid-template-columns: 350fr 334fr 334fr 326fr;
-  margin-top: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 8px;
   padding: 12px 0;
   background: var(--navy);
   color: var(--white);
@@ -509,6 +471,123 @@ button:disabled {
   background: var(--surface);
 }
 
+.selector {
+  margin-top: 14px;
+}
+
+.selector__label {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.selector__button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  background: var(--white);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.selector__button--active {
+  border-color: var(--cyan);
+  box-shadow: inset 4px 0 0 var(--cyan);
+}
+
+.selector__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selector__chevron {
+  flex: none;
+  width: 10px;
+  height: 6px;
+  transition: transform 0.15s ease;
+}
+
+.selector__chevron--open {
+  transform: rotate(180deg);
+}
+
+.selector__options {
+  border: 1px solid var(--border);
+  border-top: 0;
+  background: var(--white);
+}
+
+.option-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  min-width: 0;
+}
+
+/* 32 teams stay usable without making the panel tall. */
+.option-list--scroll {
+  max-height: 224px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.option-row {
+  /* Anchors the visually hidden input, so keyboard focus never scrolls elsewhere. */
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.option-row:hover {
+  background: var(--cyan-wash);
+}
+
+.option-row--checked,
+.option-row--checked:hover {
+  background: var(--cyan);
+  color: var(--white);
+  font-weight: 600;
+}
+
+.option-row:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.option-row__mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--navy-muted);
+  background: var(--white);
+  color: var(--cyan);
+}
+
+.option-row__mark--radio {
+  border-radius: 50%;
+}
+
+.option-row--checked .option-row__mark {
+  border-color: var(--white);
+}
+
 .filter-panel:focus {
   outline: none;
 }
@@ -518,7 +597,7 @@ button:disabled {
   top: calc(var(--control-h) + 0px);
   right: 16px;
   z-index: 21;
-  width: 358px;
+  width: 380px;
   box-shadow: 0 12px 32px rgb(8 43 60 / 0.14);
 }
 
@@ -544,27 +623,10 @@ button:disabled {
   font-size: 13px;
 }
 
-.option-group {
-  margin-top: 14px;
-}
-
-.option-group__label {
-  margin-bottom: 8px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
 .option-group__list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.option-group__list--scroll {
-  max-height: 252px;
-  overflow-y: auto;
-  padding: 2px;
-  margin: -2px;
 }
 
 .btn--option {
@@ -589,7 +651,8 @@ button:disabled {
   display: grid;
   grid-template-columns: 100px 1fr;
   gap: 8px;
-  margin-top: 16px;
+  padding: 4px 16px 16px;
+  background: var(--surface);
 }
 
 .panel-actions .btn {
@@ -1292,6 +1355,10 @@ button:disabled {
     --gutter: 32px;
   }
 
+  .hero__collage {
+    width: min(480px, calc(100% - 600px));
+  }
+
   .hero__title {
     font-size: 76px;
   }
@@ -1346,6 +1413,19 @@ button:disabled {
 }
 
 @media (max-width: 960px) and (min-width: 768px) {
+  .hero__title {
+    font-size: 60px;
+  }
+
+  .hero__collage {
+    width: calc(100% - 520px);
+  }
+
+  /* Same date as LAST UPDATED directly below; frees room for the artwork. */
+  .hero__updated {
+    display: none;
+  }
+
   .hero__mountains,
   .hero__pines {
     opacity: 0.35;
@@ -1358,21 +1438,6 @@ button:disabled {
       "team team position position reset reset";
   }
 
-  .notice {
-    flex-wrap: wrap;
-    row-gap: 4px;
-  }
-
-  /* Four summary columns are too narrow here for values like "Purple Reign". */
-  .summary {
-    grid-template-columns: 1fr 1fr;
-    row-gap: 16px;
-  }
-
-  .summary__item:nth-child(odd) {
-    padding-left: 16px;
-    border-left: 0;
-  }
 }
 
 /* ---------------------------------------------------------------- Mobile */
@@ -1399,10 +1464,13 @@ button:disabled {
     letter-spacing: 0.08em;
   }
 
-  .hero__sub,
-  .hero__updated,
-  .hero__registry {
+  .hero__updated {
     display: none;
+  }
+
+  .hero__registry {
+    font-size: 14px;
+    letter-spacing: 0.1em;
   }
 
   .hero__draft-label {
@@ -1429,16 +1497,18 @@ button:disabled {
   }
 
   .hero__art {
-    top: 58px;
+    top: 62px;
     bottom: auto;
     height: 172px;
   }
 
   .hero__collage {
-    top: 0;
-    left: 0;
+    right: 0;
+    width: 100%;
     height: 172px;
-    transform: none;
+    object-position: 50% 44%;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 70%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 70%, transparent 100%);
   }
 
   .hero__mountains {
@@ -1451,40 +1521,15 @@ button:disabled {
     display: none;
   }
 
-  .notice {
-    display: block;
-    margin-top: 16px;
-    padding: 14px 12px;
-  }
-
-  .notice__icon {
-    display: none;
-  }
-
-  .notice__title {
-    margin: 0;
-    font-size: 16px;
-    letter-spacing: 0.08em;
-  }
-
-  .notice__text {
-    margin-top: 4px;
-    font-family: var(--font-body);
-    font-size: 13px;
-  }
-
-  .notice__text--desktop {
-    display: none;
-  }
-
-  .notice__text--mobile {
-    display: block;
-  }
-
   .summary {
     grid-template-columns: 1fr 1fr;
     gap: 16px 12px;
+    margin-top: 16px;
     padding: 16px;
+  }
+
+  .summary__item:last-child {
+    grid-column: 1 / -1;
   }
 
   .summary__item,
@@ -1677,7 +1722,7 @@ button:disabled {
   z-index: 1;
   width: 174px;
   min-width: 174px;
-  background: var(--paper);
+  background: var(--paper) url("/brand/paper-texture.webp") repeat left top / 768px 512px;
 }
 
 .player-row:hover .m-col-player,
@@ -1733,12 +1778,20 @@ button:disabled {
   z-index: 40;
   overflow-y: auto;
   padding: 16px;
-  background: var(--paper);
+  background: var(--paper) url("/brand/paper-texture.webp") repeat left top / 768px 512px;
   overscroll-behavior: contain;
 }
 
 .filter-panel--screen .filter-panel__body {
   background: var(--surface);
+}
+
+/* Clear / Show stay reachable while the selectors scroll. */
+.filter-panel--screen .panel-actions {
+  position: sticky;
+  bottom: -16px;
+  padding: 12px 16px 16px;
+  box-shadow: 0 -8px 16px rgb(8 43 60 / 0.08);
 }
 
 .filter-panel--screen .panel-title {
