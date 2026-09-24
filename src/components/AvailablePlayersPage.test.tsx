@@ -70,6 +70,10 @@ describe("Available Players page", () => {
     expect(screen.getByText("2026–2027 Player Registry")).toBeInTheDocument();
     expect(screen.getAllByText(/Player Registry/)).toHaveLength(1);
     expect(screen.queryByText(/Fantasy Hockey/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Scouting the pool/i)).not.toBeInTheDocument();
+    // The last-updated date lives only in the summary strip, not the header.
+    expect(screen.queryByText(/Updated ·/)).not.toBeInTheDocument();
+    expect(screen.getAllByText("Sep 23, 2026")).toHaveLength(1);
   });
 
   it("shows the loading state inside the page chrome", async () => {

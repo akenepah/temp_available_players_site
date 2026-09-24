@@ -6,10 +6,10 @@ export const SITE = {
   draftSeason: "2026-27",
   statsSeason: "2025-26",
   /**
-   * Hero artwork: the artwork region of the approved three-player share card
-   * (Celebrini #71, Hutson #48, McKenna #92), cropped so none of the card's
-   * baked-in text appears. Set to null to fall back to the mountain/pine
-   * engravings.
+   * Back-view three-player artwork (Celebrini #71, McKenna #92, Hutson #48)
+   * layered in front of the mountain/pine engravings. Not supplied yet: set to
+   * its public path (e.g. "/brand/hero-players-back.png", a transparent PNG or
+   * WebP with no text) once added. The hero renders cleanly without it.
    */
-  heroCollageSrc: "/brand/hero-players.webp" as string | null,
+  heroPlayersSrc: null as string | null,
 };

@@ -165,11 +165,6 @@ button:disabled {
   letter-spacing: 0.04em;
 }
 
-.hero__updated {
-  font-size: 13px;
-  color: var(--navy-muted);
-}
-
 /* Subordinate to FARM TO FAME, but a real label rather than metadata. */
 .hero__registry {
   font-size: 17px;
@@ -206,23 +201,6 @@ button:disabled {
   pointer-events: none;
 }
 
-/* Artwork from the approved share card. Its flat cream ground is feathered on
-   the left and bottom so it settles into the paper texture. */
-.hero__collage {
-  position: absolute;
-  top: 0;
-  right: max(0px, calc((100% - 1440px) / 2));
-  /* Never wider than the space beside the title. */
-  width: min(660px, calc(100% - 760px));
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% 38%;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 16%), linear-gradient(to bottom, #000 72%, transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0, #000 16%), linear-gradient(to bottom, #000 72%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-composite: intersect;
-}
-
 .hero__mountains,
 .hero__pines {
   position: absolute;
@@ -245,6 +223,19 @@ button:disabled {
   height: 214px;
   background-image: url("/brand/pine-forest-engraving.webp");
   opacity: 0.95;
+}
+
+/* Back-view player artwork, standing in front of the mountains in the space
+   the approved design gives it (between the title and the pines). */
+.hero__players {
+  position: absolute;
+  bottom: 0;
+  right: calc(max(0px, (100% - 1440px) / 2) + 290px);
+  height: 250px;
+  width: auto;
+  max-width: calc(100% - 760px);
+  object-fit: contain;
+  object-position: right bottom;
 }
 
 /* --------------------------------------------------------------- Summary */
@@ -1355,8 +1346,10 @@ button:disabled {
     --gutter: 32px;
   }
 
-  .hero__collage {
-    width: min(480px, calc(100% - 600px));
+  .hero__players {
+    right: 220px;
+    height: 210px;
+    max-width: calc(100% - 620px);
   }
 
   .hero__title {
@@ -1417,13 +1410,10 @@ button:disabled {
     font-size: 60px;
   }
 
-  .hero__collage {
-    width: calc(100% - 520px);
-  }
-
-  /* Same date as LAST UPDATED directly below; frees room for the artwork. */
-  .hero__updated {
-    display: none;
+  .hero__players {
+    right: 120px;
+    height: 170px;
+    max-width: calc(100% - 500px);
   }
 
   .hero__mountains,
@@ -1464,10 +1454,6 @@ button:disabled {
     letter-spacing: 0.08em;
   }
 
-  .hero__updated {
-    display: none;
-  }
-
   .hero__registry {
     font-size: 14px;
     letter-spacing: 0.1em;
@@ -1502,13 +1488,12 @@ button:disabled {
     height: 172px;
   }
 
-  .hero__collage {
-    right: 0;
-    width: 100%;
-    height: 172px;
-    object-position: 50% 44%;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 70%, transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 70%, transparent 100%);
+  .hero__players {
+    left: 0;
+    right: auto;
+    height: 160px;
+    max-width: 70%;
+    object-position: left bottom;
   }
 
   .hero__mountains {

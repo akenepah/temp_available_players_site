@@ -26,7 +26,7 @@ only and must never be copied into `public/data/`.
   "schemaVersion": 1,
   "draftSeason": "2026-27",          // draft the pool feeds
   "statsSeason": "2025-26",          // season the ACTUAL stats cover
-  "updatedAt": "YYYY-MM-DD",         // "Last updated" / hero "Updated ·"
+  "updatedAt": "YYYY-MM-DD",         // summary "Last updated"
   "adpCheckedAt": "YYYY-MM-DD",      // "ADP checked …" / footer date
   "keeperDecisions": { "completed": 10, "total": 10 },
   "commissionerSelection": null,     // required key; null, or { "franchiseId", "returnCount" }.

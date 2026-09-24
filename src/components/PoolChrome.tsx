@@ -3,20 +3,17 @@ import { SITE } from "@/lib/site";
 import type { PoolSnapshot } from "@/lib/pool/types";
 
 /** Page masthead. Desktop is the wide Player Registry composition; mobile is the stacked one (CSS). */
-export function PlayerRegistryHero({ updatedAt }: { updatedAt: string | null }) {
+export function PlayerRegistryHero() {
   const draft = formatSeason(SITE.draftSeason);
   return (
     <header className="hero">
       <div className="hero__art" aria-hidden="true">
-        {SITE.heroCollageSrc ? (
+        <span className="hero__mountains" />
+        <span className="hero__pines" />
+        {SITE.heroPlayersSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img className="hero__collage" src={SITE.heroCollageSrc} alt="" width={911} height={938} fetchPriority="high" />
-        ) : (
-          <>
-            <span className="hero__mountains" />
-            <span className="hero__pines" />
-          </>
-        )}
+          <img className="hero__players" src={SITE.heroPlayersSrc} alt="" fetchPriority="high" />
+        ) : null}
       </div>
       <div className="hero__inner">
         <div className="hero__topline">
@@ -26,7 +23,6 @@ export function PlayerRegistryHero({ updatedAt }: { updatedAt: string | null }) 
           </p>
           <p className="hero__draft">
             <span className="hero__draft-label">{draft} Draft</span>
-            {updatedAt ? <span className="hero__updated">Updated · {formatDate(updatedAt)}</span> : null}
           </p>
         </div>
         <h1 className="hero__title">Available Players</h1>

@@ -34,7 +34,7 @@ test.describe("Available Players", () => {
     expect(asset.headers()["content-type"]).toContain("image/jpeg");
   });
 
-  test("tiles the paper texture behind the entire page and shows the hero artwork", async ({ page }) => {
+  test("tiles the paper texture behind the entire page and uses the mountain hero artwork", async ({ page }) => {
     await serveFixture(page);
     await page.goto("/");
     const background = await page.evaluate(() => {
@@ -44,9 +44,10 @@ test.describe("Available Players", () => {
     expect(background.image).toContain("/brand/paper-texture.webp");
     expect(background.repeat).toBe("repeat");
     expect(background.body).toBe("rgba(0, 0, 0, 0)");
-    const art = page.locator(".hero__collage");
-    await expect(art).toHaveAttribute("src", "/brand/hero-players.webp");
-    expect(await art.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+    await expect(page.locator(".hero__mountains")).toBeVisible();
+    await expect(page.locator(".hero__collage")).toHaveCount(0);
+    const mountains = await page.locator(".hero__mountains").evaluate((el) => getComputedStyle(el).backgroundImage);
+    expect(mountains).toContain("/brand/mountain-engraving.webp");
   });
 
   test("/available-players redirects to /", async ({ page }) => {

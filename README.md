@@ -44,12 +44,14 @@ pnpm exec tsx -e 'import {FIXTURE_SNAPSHOT as s} from "./tests/fixtures/pool"; r
 
 ## Hero and share artwork
 
-`public/brand/og-available-players.jpg` is the approved three-player share card
-(Celebrini #71, Hutson #48, McKenna #92) at 1200×671, used for Open Graph and
-Twitter previews. `public/brand/hero-players.webp` is the artwork region of that
-same card, cropped clear of its baked-in text, and shown in the hero
-(`heroCollageSrc` in `src/lib/site.ts`; set it to `null` to fall back to the
-mountain/pine engravings).
+The hero uses the approved mountain and pine engravings. The back-view
+three-player artwork (Celebrini #71, McKenna #92, Hutson #48) has a positioned
+slot in front of them but has not been supplied yet: add it to `public/brand/`
+as a transparent, text-free PNG/WebP and set `heroPlayersSrc` in
+`src/lib/site.ts`.
+
+`public/brand/og-available-players.jpg` is the approved share card
+(1200×671), used for Open Graph and Twitter previews only.
 
 ## Deployment
 

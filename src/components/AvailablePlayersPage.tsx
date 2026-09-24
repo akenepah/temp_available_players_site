@@ -131,7 +131,7 @@ export function AvailablePlayersPage() {
   return (
     <div className="page">
       <div className="page__content" inert={modalOpen}>
-        <PlayerRegistryHero updatedAt={snapshot?.updatedAt ?? null} />
+        <PlayerRegistryHero />
         <main className="container" id="main">
           <PoolSummary snapshot={snapshot} />
           <div className="controls-wrap">
