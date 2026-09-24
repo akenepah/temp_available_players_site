@@ -85,6 +85,20 @@ test.describe("desktop", () => {
     await expect(drawer).toBeHidden();
   });
 
+  test("browser Back closes the profile drawer and a player link opens it", async ({ page }) => {
+    await serveFixture(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Kirill Kaprizov, open player profile" }).click();
+    await expect(page).toHaveURL(/\?player=kaprizov$/);
+    await page.goBack();
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await expect(page).toHaveURL(/\/$/);
+    await page.goForward();
+    await expect(page.getByRole("dialog", { name: /Kirill Kaprizov/ })).toBeVisible();
+    await page.goto("/?player=necas");
+    await expect(page.getByRole("dialog", { name: /Martin Necas/ })).toBeVisible();
+  });
+
   test("search field shows a visible keyboard focus state", async ({ page }) => {
     await serveFixture(page);
     await page.goto("/");
@@ -110,6 +124,17 @@ test.describe("mobile", () => {
     await expect(page.getByRole("columnheader", { name: "BLK" })).toBeAttached();
     // The page itself never scrolls horizontally.
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+
+  test("browser Back closes the full-screen profile and keeps the list where it was", async ({ page }) => {
+    await serveFixture(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: /^Next/ }).click();
+    await page.getByRole("button", { name: "Connor Bedard, open player profile" }).click();
+    await expect(page.getByRole("dialog", { name: /Connor Bedard/ })).toBeVisible();
+    await page.goBack();
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await expect(page.getByText("Showing 7–12 of 119 skaters")).toBeVisible();
   });
 
   test("Back from the full-screen profile restores the list and scroll position", async ({ page }) => {

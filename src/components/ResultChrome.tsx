@@ -69,13 +69,39 @@ export function AppliedFilterChips({
   );
 }
 
-export function Pagination({ page, type, onChange }: { page: Page<unknown>; type: PlayerType; onChange: (page: number) => void }) {
+export function Pagination({
+  page,
+  type,
+  onChange,
+  pageSize,
+  pageSizeOptions,
+  onPageSizeChange,
+}: {
+  page: Page<unknown>;
+  type: PlayerType;
+  onChange: (page: number) => void;
+  pageSize: number;
+  pageSizeOptions: number[];
+  onPageSizeChange: (size: number) => void;
+}) {
   if (page.total === 0) return null;
   return (
     <nav className="pagination" aria-label="Player list pages">
-      <p className="pagination__status" aria-live="polite">
-        Showing {page.start}–{page.end} of {page.total} {playerNoun(type, page.total)}
-      </p>
+      <div className="pagination__meta">
+        <p className="pagination__status" aria-live="polite">
+          Showing {page.start}–{page.end} of {page.total} {playerNoun(type, page.total)}
+        </p>
+        <label className="pagination__size">
+          <span>Per page</span>
+          <select value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))}>
+            {pageSizeOptions.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <div className="pagination__controls">
         <button type="button" className="btn btn--page" disabled={page.page <= 1} onClick={() => onChange(page.page - 1)}>
           <span aria-hidden="true">← </span>Previous

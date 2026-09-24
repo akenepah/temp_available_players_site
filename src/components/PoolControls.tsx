@@ -72,6 +72,21 @@ export function PoolControls({ query, isMobile, filtersOpen, onTypeChange, onSea
           value={query.search}
           onChange={(event) => onSearchChange(event.target.value)}
         />
+        {query.search ? (
+          <button
+            type="button"
+            className="search__clear"
+            aria-label="Clear search"
+            onClick={() => {
+              onSearchChange("");
+              document.getElementById("player-search")?.focus();
+            }}
+          >
+            <svg viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M2 2l8 8M10 2l-8 8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+        ) : null}
       </div>
       <button
         type="button"

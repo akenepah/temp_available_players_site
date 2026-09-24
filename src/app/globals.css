@@ -327,6 +327,33 @@ button:disabled {
 
 .controls__search {
   grid-area: search;
+  position: relative;
+}
+
+/* Clear (×) appears once there's something to clear; keeps the centred text clear of it. */
+.search__clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--navy-muted);
+  transform: translateY(-50%);
+}
+
+.search__clear:hover {
+  color: var(--navy);
+}
+
+.search__clear svg {
+  width: 12px;
+  height: 12px;
 }
 
 .controls__team {
@@ -421,7 +448,7 @@ button:disabled {
 .search {
   width: 100%;
   height: var(--control-h);
-  padding: 0 16px;
+  padding: 0 40px;
   border: 1px solid var(--border);
   border-radius: 0;
   background: var(--surface);
@@ -928,8 +955,35 @@ button:disabled {
   padding-bottom: 56px;
 }
 
+.pagination__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
 .pagination__status {
   font-size: 13px;
+}
+
+.pagination__size {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.pagination__size select {
+  min-height: 32px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23082b3c' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 10px center / 10px 6px;
+  color: var(--navy);
+  font: inherit;
+  font-weight: 600;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .pagination__controls {

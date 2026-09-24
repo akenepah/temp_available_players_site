@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatSeason } from "@/lib/pool/format";
 import { SITE } from "@/lib/site";
 import { usePoolSnapshot } from "@/lib/pool/load";
@@ -36,6 +36,18 @@ import { AvailablePlayerMobileTable, AvailablePlayerTable } from "./PlayerTables
 import { AppliedFilterChips, Pagination, filterChips, playerNoun } from "./ResultChrome";
 import { SortScreen } from "./SortScreen";
 
+/** The current URL with ?player set to `id`, or removed when null; other parameters are kept. */
+function playerUrl(id: string | null): string {
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set("player", id);
+  else url.searchParams.delete("player");
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function readPlayerParam(): string | null {
+  return new URLSearchParams(window.location.search).get("player");
+}
+
 type Overlay = { kind: "filters"; section: FilterSection } | { kind: "sort" } | null;
 
 /** "1 match for “necas”" / "2 matching players". */
@@ -70,6 +82,7 @@ export function AvailablePlayersPage() {
   const [page, setPage] = useState(1);
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState<number | null>(null);
 
   const updateQuery = useCallback((update: (query: PoolQuery) => PoolQuery) => {
     setQuery(update);
@@ -77,7 +90,8 @@ export function AvailablePlayersPage() {
   }, []);
 
   const results = useMemo(() => applyQuery(players, query), [players, query]);
-  const current = paginate(results, page, isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE);
+  const defaultPageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
+  const current = paginate(results, page, pageSize ?? defaultPageSize);
   const profileIndex = profileId === null ? -1 : results.findIndex((player) => player.id === profileId);
   const profilePlayer = profileIndex >= 0 ? results[profileIndex] : undefined;
 
@@ -88,11 +102,52 @@ export function AvailablePlayersPage() {
   const clearFilters = () => updateQuery((q) => ({ ...q, search: "", filters: EMPTY_FILTERS }));
   const reset = () => updateQuery((q) => ({ ...initialQuery(), type: q.type }));
 
-  const openProfile = (player: Player) => setProfileId(player.id);
+  // The open profile lives in the URL (?player=<id>): opening one pushes a
+  // history entry, so the browser Back button / swipe-back closes it, and a
+  // link to a player opens straight to their profile.
+  const openProfile = (player: Player) => {
+    window.history.pushState({ profile: player.id }, "", playerUrl(player.id));
+    setProfileId(player.id);
+  };
   const stepProfile = (delta: number) => {
     const next = results[profileIndex + delta];
-    if (next) setProfileId(next.id);
+    if (!next) return;
+    // Replace rather than push: Back returns to the list, not through every player viewed.
+    window.history.replaceState({ profile: next.id }, "", playerUrl(next.id));
+    setProfileId(next.id);
   };
+  const closeProfile = () => {
+    if ((window.history.state as { profile?: string } | null)?.profile) {
+      window.history.back(); // popstate below clears the profile
+    } else {
+      window.history.replaceState(null, "", playerUrl(null));
+      setProfileId(null);
+    }
+  };
+
+  useEffect(() => {
+    const onPopState = () => setProfileId(readPlayerParam());
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // Deep link: when the pool first loads, open ?player=<id>, switching to
+  // Goalies if needed (adjusted during render, not in an effect).
+  const [linkedSnapshot, setLinkedSnapshot] = useState<typeof snapshot>(null);
+  if (snapshot && linkedSnapshot !== snapshot) {
+    setLinkedSnapshot(snapshot);
+    const linked = snapshot.players.find((p) => p.id === readPlayerParam());
+    if (linked) {
+      if (linked.type !== query.type) setQuery((q) => switchType(q, linked.type));
+      setProfileId(linked.id);
+    }
+  }
+
+  // An unknown ?player=<id> is dropped from the address bar once the pool is known.
+  useEffect(() => {
+    const id = readPlayerParam();
+    if (snapshot && id && !snapshot.players.some((p) => p.id === id)) window.history.replaceState(null, "", playerUrl(null));
+  }, [snapshot]);
 
   const heading = query.type === "skater" ? "Available skaters" : "Available goalies";
   const isFiltered = query.search.trim() !== "" || hasActiveFilters(query.filters);
@@ -188,7 +243,17 @@ export function AvailablePlayersPage() {
         <div className="container">
           <SiteFooter snapshot={snapshot} />
           {/* Pagination follows the footer rule, as in the approved exports. */}
-          {snapshot && results.length > 0 ? <Pagination page={current} type={query.type} onChange={setPage} /> : null}
+          {snapshot && results.length > 0 ? <Pagination
+              page={current}
+              type={query.type}
+              onChange={setPage}
+              pageSize={pageSize ?? defaultPageSize}
+              pageSizeOptions={[defaultPageSize, 25, 50, 100]}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+            /> : null}
         </div>
       </div>
 
@@ -226,7 +291,7 @@ export function AvailablePlayersPage() {
           snapshot={snapshot}
           onPrevious={() => stepProfile(-1)}
           onNext={() => stepProfile(1)}
-          onClose={() => setProfileId(null)}
+          onClose={closeProfile}
         />
       ) : null}
     </div>

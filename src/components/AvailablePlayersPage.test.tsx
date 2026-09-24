@@ -46,6 +46,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  window.history.replaceState(null, "", "/");
 });
 
 describe("Available Players page", () => {
@@ -323,6 +324,75 @@ describe("Available Players page", () => {
     await user.keyboard("{Escape}");
     await user.type(screen.getByLabelText("Search players"), "blake");
     expect(rowNames()).toEqual(["Blake Coleman"]);
+  });
+
+  it("puts the open profile in the URL so browser Back closes it", async () => {
+    mockFetch();
+    const user = await renderLoaded();
+    await user.click(screen.getByRole("button", { name: "Kirill Kaprizov, open player profile" }));
+    expect(window.location.search).toBe("?player=kaprizov");
+
+    // Previous/Next replace the entry rather than stacking history, so one
+    // Back from Necas returns to the list, not to Kaprizov.
+    await user.click(screen.getByRole("button", { name: "Next player" }));
+    expect(window.location.search).toBe("?player=necas");
+
+    window.history.back();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(window.location.search).toBe("");
+  });
+
+  it("clears the URL when the profile is closed from the UI", async () => {
+    mockFetch();
+    const user = await renderLoaded();
+    await user.click(screen.getByRole("button", { name: "Martin Necas, open player profile" }));
+    expect(window.location.search).toBe("?player=necas");
+    await user.click(screen.getByRole("button", { name: "Close player profile" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(window.location.search).toBe("");
+  });
+
+  it("opens a linked player's profile on load, switching to goalies when needed", async () => {
+    window.history.replaceState(null, "", "/?player=vasilevskiy");
+    mockFetch();
+    await renderLoaded();
+    expect(await screen.findByRole("dialog", { name: /Andrei Vasilevskiy/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Goalies" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("ignores and removes an unknown player link", async () => {
+    window.history.replaceState(null, "", "/?player=nobody");
+    mockFetch();
+    await renderLoaded();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(window.location.search).toBe(""));
+  });
+
+  it("offers a clear button in the search field once something is typed", async () => {
+    mockFetch();
+    const user = await renderLoaded();
+    expect(screen.queryByRole("button", { name: "Clear search" })).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Search players"), "necas");
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(screen.getByLabelText("Search players")).toHaveValue("");
+    expect(screen.getByLabelText("Search players")).toHaveFocus();
+    expect(bodyRows()).toHaveLength(8);
+    expect(screen.queryByRole("button", { name: "Clear search" })).not.toBeInTheDocument();
+  });
+
+  it("lets the reader choose how many players to show per page", async () => {
+    mockFetch();
+    const user = await renderLoaded();
+    await user.click(screen.getByRole("button", { name: /Next/ }));
+    const perPage = screen.getByRole("combobox", { name: "Per page" });
+    expect(perPage).toHaveValue("8");
+    expect([...(perPage as HTMLSelectElement).options].map((o) => o.value)).toEqual(["8", "25", "50", "100"]);
+    await user.selectOptions(perPage, "25");
+    expect(bodyRows()).toHaveLength(25);
+    expect(screen.getByText("Showing 1–25 of 119 skaters")).toBeInTheDocument();
+    expect(screen.getByLabelText("Page 1 of 5")).toBeInTheDocument();
+    await user.selectOptions(perPage, "100");
+    expect(screen.getByLabelText("Page 1 of 2")).toBeInTheDocument();
   });
 
   it("hides skater positions in goalie mode", async () => {
