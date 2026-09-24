@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { FRANCHISES, NHL_TEAMS, POSITION_LABELS, type Position } from "@/lib/pool/reference";
-import { applyQuery, positionsFor, togglePosition, EMPTY_FILTERS, type Filters, type PoolQuery } from "@/lib/pool/query";
+import { activeFilterCount, facetCounts, positionsFor, togglePosition, EMPTY_FILTERS, type Filters, type PoolQuery } from "@/lib/pool/query";
 import type { Player } from "@/lib/pool/types";
 import { useModal } from "@/lib/ui/hooks";
 import type { FilterSection } from "./PoolControls";
@@ -86,22 +86,35 @@ function OptionRow({
   type,
   name,
   label,
+  count,
   checked,
   onChange,
 }: {
   type: "radio" | "checkbox";
   name: string;
   label: string;
+  /** Players this option would return with the other selections kept. */
+  count: number;
   checked: boolean;
   onChange: () => void;
 }) {
   return (
-    <label className={`option-row${checked ? " option-row--checked" : ""}`}>
-      <input type={type} name={name} checked={checked} onChange={onChange} className="visually-hidden" />
+    <label className={`option-row${checked ? " option-row--checked" : ""}${count === 0 && !checked ? " option-row--empty" : ""}`}>
+      <input
+        type={type}
+        name={name}
+        checked={checked}
+        onChange={onChange}
+        className="visually-hidden"
+        aria-label={`${label}, ${count} ${count === 1 ? "player" : "players"}`}
+      />
       <span className={`option-row__mark option-row__mark--${type}`} aria-hidden="true">
         {checked ? <Check /> : null}
       </span>
       <span className="option-row__text">{label}</span>
+      <span className="option-row__count" aria-hidden="true">
+        {count}
+      </span>
     </label>
   );
 }
@@ -122,7 +135,9 @@ export function FilterPanel({ variant, players, query, focusSection, onApply, on
   const [open, setOpen] = useState<Section | null>(initialSection);
 
   const skaterPositions = positionsFor("skater");
-  const resultCount = useMemo(() => applyQuery(players, { ...query, filters: staged }).length, [players, query, staged]);
+  const counts = useMemo(() => facetCounts(players, query, staged), [players, query, staged]);
+  const resultCount = counts.total;
+  const stagedCount = activeFilterCount(staged);
 
   const toggle = (section: Section) => setOpen((current) => (current === section ? null : section));
   const teamName = NHL_TEAMS.find((team) => team.abbrev === staged.team)?.name;
@@ -149,6 +164,12 @@ export function FilterPanel({ variant, players, query, focusSection, onApply, on
       <div className="filter-panel__body">
         <h2 className="panel-title" id="filter-panel-title">
           Filter players
+          {stagedCount > 0 ? (
+            <>
+              {" "}
+              <span className="panel-title__count">({stagedCount})</span>
+            </>
+          ) : null}
         </h2>
         <p className="panel-lede">Combine filters to narrow the returning pool.</p>
 
@@ -167,6 +188,7 @@ export function FilterPanel({ variant, players, query, focusSection, onApply, on
               type="radio"
               name="filter-team"
               label="All NHL Teams"
+              count={counts.allTeams}
               checked={staged.team === null}
               onChange={() => {
                 setStaged((s) => ({ ...s, team: null }));
@@ -179,6 +201,7 @@ export function FilterPanel({ variant, players, query, focusSection, onApply, on
                 type="radio"
                 name="filter-team"
                 label={team.name}
+                count={counts.team.get(team.abbrev) ?? 0}
                 checked={staged.team === team.abbrev}
                 onChange={() => {
                   setStaged((s) => ({ ...s, team: team.abbrev }));
@@ -205,6 +228,7 @@ export function FilterPanel({ variant, players, query, focusSection, onApply, on
                 type="checkbox"
                 name="filter-position-all"
                 label="All Positions"
+                count={counts.allPositions}
                 checked={staged.positions.length === 0}
                 onChange={() => setPositions([])}
               />
@@ -214,6 +238,7 @@ export function FilterPanel({ variant, players, query, focusSection, onApply, on
                   type="checkbox"
                   name="filter-position"
                   label={POSITION_LABELS[position]}
+                  count={counts.position.get(position) ?? 0}
                   checked={staged.positions.includes(position)}
                   onChange={() => setPositions(togglePosition(staged.positions, position, skaterPositions))}
                 />
@@ -237,6 +262,7 @@ export function FilterPanel({ variant, players, query, focusSection, onApply, on
               type="radio"
               name="filter-franchise"
               label="All Franchises"
+              count={counts.allFranchises}
               checked={staged.franchise === null}
               onChange={() => {
                 setStaged((s) => ({ ...s, franchise: null }));
@@ -249,6 +275,7 @@ export function FilterPanel({ variant, players, query, focusSection, onApply, on
                 type="radio"
                 name="filter-franchise"
                 label={franchise.name}
+                count={counts.franchise.get(franchise.id) ?? 0}
                 checked={staged.franchise === franchise.id}
                 onChange={() => {
                   setStaged((s) => ({ ...s, franchise: franchise.id }));

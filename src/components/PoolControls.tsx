@@ -1,7 +1,6 @@
 "use client";
 
-import { POSITION_LABELS, getNhlTeam } from "@/lib/pool/reference";
-import { sortControlLabel, type PoolQuery } from "@/lib/pool/query";
+import { activeFilterCount, sortControlLabel, type PoolQuery } from "@/lib/pool/query";
 import type { PlayerType } from "@/lib/pool/types";
 
 export type FilterSection = "team" | "position" | "franchise";
@@ -12,9 +11,10 @@ interface Props {
   filtersOpen: boolean;
   onTypeChange: (type: PlayerType) => void;
   onSearchChange: (search: string) => void;
+  onClearSearch: () => void;
   onOpenFilters: (section: FilterSection) => void;
   onOpenSort: () => void;
-  onReset: () => void;
+  onClearFilters: () => void;
 }
 
 const TYPES: { type: PlayerType; label: string }[] = [
@@ -30,18 +30,27 @@ function Chevron() {
   );
 }
 
-export function PoolControls({ query, isMobile, filtersOpen, onTypeChange, onSearchChange, onOpenFilters, onOpenSort, onReset }: Props) {
-  const team = getNhlTeam(query.filters.team);
-  const teamLabel = team ? team.shortName : "All teams";
-  const { positions } = query.filters;
-  const positionLabel =
-    query.type === "goalie"
-      ? "Goalies"
-      : positions.length === 0
-        ? "All positions"
-        : positions.length === 1
-          ? POSITION_LABELS[positions[0]!]
-          : positions.join(" + ");
+/**
+ * Search, tab, filter and sort controls. Search and filters are separate
+ * tasks: the × clears only the search, and "Clear filters" clears only the
+ * team / position / franchise selections (never search, sort or the tab).
+ */
+export function PoolControls({
+  query,
+  isMobile,
+  filtersOpen,
+  onTypeChange,
+  onSearchChange,
+  onClearSearch,
+  onOpenFilters,
+  onOpenSort,
+  onClearFilters,
+}: Props) {
+  const filterCount = activeFilterCount(query.filters);
+  const clearSearch = () => {
+    onClearSearch();
+    document.getElementById("player-search")?.focus();
+  };
 
   return (
     <div className="controls">
@@ -71,17 +80,15 @@ export function PoolControls({ query, isMobile, filtersOpen, onTypeChange, onSea
           placeholder={isMobile ? "Search players..." : "Search players, teams, positions..."}
           value={query.search}
           onChange={(event) => onSearchChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && query.search) {
+              event.preventDefault();
+              clearSearch();
+            }
+          }}
         />
         {query.search ? (
-          <button
-            type="button"
-            className="search__clear"
-            aria-label="Clear search"
-            onClick={() => {
-              onSearchChange("");
-              document.getElementById("player-search")?.focus();
-            }}
-          >
+          <button type="button" className="search__clear" aria-label="Clear search" onClick={clearSearch}>
             <svg viewBox="0 0 12 12" aria-hidden="true">
               <path d="M2 2l8 8M10 2l-8 8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
@@ -90,23 +97,13 @@ export function PoolControls({ query, isMobile, filtersOpen, onTypeChange, onSea
       </div>
       <button
         type="button"
-        className="btn btn--select controls__team"
+        className={`btn btn--select controls__filters${filterCount > 0 ? " controls__filters--active" : ""}`}
         aria-haspopup="dialog"
         aria-expanded={filtersOpen}
-        aria-label={`NHL team filter: ${team ? team.name : "All teams"}`}
+        aria-label={filterCount > 0 ? `Filters, ${filterCount} active` : "Filters"}
         onClick={() => onOpenFilters("team")}
       >
-        {teamLabel} <Chevron />
-      </button>
-      <button
-        type="button"
-        className="btn btn--select controls__position"
-        aria-haspopup="dialog"
-        aria-expanded={filtersOpen}
-        aria-label={`Position filter: ${positionLabel}`}
-        onClick={() => onOpenFilters("position")}
-      >
-        {positionLabel} <Chevron />
+        Filters{filterCount > 0 ? <span className="controls__count">({filterCount})</span> : null} <Chevron />
       </button>
       {isMobile ? (
         <button
@@ -119,8 +116,8 @@ export function PoolControls({ query, isMobile, filtersOpen, onTypeChange, onSea
           {sortControlLabel(query.type, query.sort)} <Chevron />
         </button>
       ) : null}
-      <button type="button" className="btn btn--select controls__reset" onClick={onReset}>
-        Reset
+      <button type="button" className="btn btn--select controls__clear" onClick={onClearFilters} disabled={filterCount === 0}>
+        Clear filters
       </button>
     </div>
   );

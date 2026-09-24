@@ -30,8 +30,9 @@ export interface PoolQuery {
 export const DEFAULT_SORT: Sort = { key: "adp", direction: "asc" };
 export const EMPTY_FILTERS: Filters = { team: null, positions: [], franchise: null };
 
-export const DESKTOP_PAGE_SIZE = 8;
-export const MOBILE_PAGE_SIZE = 6;
+/** Rows-per-page choices; the same on every screen size so shared links behave identically. */
+export const PAGE_SIZE_OPTIONS: readonly number[] = [10, 20, 50];
+export const DEFAULT_PAGE_SIZE = 20;
 
 export function initialQuery(): PoolQuery {
   return { type: "skater", search: "", filters: EMPTY_FILTERS, sort: DEFAULT_SORT };
@@ -185,6 +186,38 @@ export function positionsFor(type: PlayerType): Position[] {
 export function togglePosition(positions: readonly Position[], position: Position, order: readonly Position[]): Position[] {
   const next = positions.includes(position) ? positions.filter((p) => p !== position) : [...positions, position];
   return order.filter((p) => next.includes(p));
+}
+
+export function activeFilterCount(filters: Filters): number {
+  return (filters.team ? 1 : 0) + filters.positions.length + (filters.franchise ? 1 : 0);
+}
+
+/**
+ * How many players each option would return, keeping the other dimensions
+ * (and search) as they are: counts for a dimension ignore that dimension's own
+ * selection, so a reader can see what switching would give.
+ */
+export function facetCounts(players: readonly Player[], query: PoolQuery, filters: Filters) {
+  const base = players.filter((player) => player.type === query.type && matchesSearch(player, query.search));
+  const count = (f: Filters) => base.filter((player) => matchesFilters(player, f)).length;
+  const team = new Map<string, number>();
+  const position = new Map<string, number>();
+  const franchise = new Map<string, number>();
+  const byTeam = base.filter((player) => matchesFilters(player, { ...filters, team: null }));
+  for (const player of byTeam) if (player.nhlTeam) team.set(player.nhlTeam.abbrev, (team.get(player.nhlTeam.abbrev) ?? 0) + 1);
+  const byPosition = base.filter((player) => matchesFilters(player, { ...filters, positions: [] }));
+  for (const player of byPosition) position.set(player.position, (position.get(player.position) ?? 0) + 1);
+  const byFranchise = base.filter((player) => matchesFilters(player, { ...filters, franchise: null }));
+  for (const player of byFranchise) franchise.set(player.previousFranchise.id, (franchise.get(player.previousFranchise.id) ?? 0) + 1);
+  return {
+    team,
+    position,
+    franchise,
+    allTeams: byTeam.length,
+    allPositions: byPosition.length,
+    allFranchises: byFranchise.length,
+    total: count(filters),
+  };
 }
 
 export function hasActiveFilters(filters: Filters): boolean {

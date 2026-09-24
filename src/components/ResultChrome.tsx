@@ -81,7 +81,7 @@ export function Pagination({
   type: PlayerType;
   onChange: (page: number) => void;
   pageSize: number;
-  pageSizeOptions: number[];
+  pageSizeOptions: readonly number[];
   onPageSizeChange: (size: number) => void;
 }) {
   if (page.total === 0) return null;
@@ -92,7 +92,7 @@ export function Pagination({
           Showing {page.start}–{page.end} of {page.total} {playerNoun(type, page.total)}
         </p>
         <label className="pagination__size">
-          <span>Per page</span>
+          <span>Rows per page</span>
           <select value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))}>
             {pageSizeOptions.map((size) => (
               <option key={size} value={size}>

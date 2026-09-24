@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { formatAdp } from "@/lib/pool/format";
 import { defaultDirection, type Sort, type SortKey } from "@/lib/pool/query";
 import { columnsFor } from "@/lib/pool/stats";
@@ -131,57 +132,67 @@ export function AvailablePlayerTable({ type, players, startRank, sort, onSort, o
 export function AvailablePlayerMobileTable({ type, players, sort, onOpen }: TableProps) {
   const columns = columnsFor(type);
   const arrow = (key: SortKey) => (sort.key === key ? (sort.direction === "asc" ? " ↑" : " ↓") : "");
+  // Scroll position drives the visual cues: a fade on the right while more
+  // columns remain, and a shadow on the pinned player column once scrolled.
+  const [edges, setEdges] = useState({ scrolled: false, atEnd: false });
+  const onScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const el = event.currentTarget;
+    const next = { scrolled: el.scrollLeft > 2, atEnd: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 };
+    if (next.scrolled !== edges.scrolled || next.atEnd !== edges.atEnd) setEdges(next);
+  };
   return (
-    <div className="mobile-table-scroll" tabIndex={0} role="region" aria-label="Player statistics, scroll horizontally for more">
-      <table className="mobile-table">
-        <caption className="visually-hidden">{type === "skater" ? "Available skaters" : "Available goalies"}</caption>
-        <thead>
-          <tr>
-            <th scope="col" className="m-col-player">
-              Player
-            </th>
-            <th scope="col" className="m-col-team">
-              Team
-            </th>
-            <th scope="col" className="m-col-pos">
-              Pos
-            </th>
-            <th scope="col" className="m-col-num" aria-sort={sort.key === "adp" ? (sort.direction === "asc" ? "ascending" : "descending") : undefined}>
-              ADP{arrow("adp")}
-            </th>
-            {columns.map((column) => (
-              <th
-                key={column.key}
-                scope="col"
-                className="m-col-num"
-                aria-sort={sort.key === column.key ? (sort.direction === "asc" ? "ascending" : "descending") : undefined}
-              >
-                {column.abbr}
-                {arrow(column.key)}
+    <div className={`mobile-table-wrap${edges.scrolled ? " is-scrolled" : ""}${edges.atEnd ? " is-end" : ""}`}>
+      <div className="mobile-table-scroll" tabIndex={0} role="region" aria-label="Player statistics, scroll horizontally for more" onScroll={onScroll}>
+        <table className="mobile-table">
+          <caption className="visually-hidden">{type === "skater" ? "Available skaters" : "Available goalies"}</caption>
+          <thead>
+            <tr>
+              <th scope="col" className="m-col-player">
+                Player
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {players.map((player) => (
-            <tr key={player.id} className="player-row" onClick={rowClick(player, onOpen)}>
-              <th scope="row" className="m-col-player">
-                <PlayerOpenButton player={player} onOpen={onOpen} />
+              <th scope="col" className="m-col-team">
+                Team
               </th>
-              <td className="m-col-team">
-                <TeamMark team={player.nhlTeam} />
-              </td>
-              <td className="m-col-pos">{player.position}</td>
-              <td className="m-col-num">{formatAdp(player.adp)}</td>
+              <th scope="col" className="m-col-pos">
+                Pos
+              </th>
+              <th scope="col" className="m-col-num" aria-sort={sort.key === "adp" ? (sort.direction === "asc" ? "ascending" : "descending") : undefined}>
+                ADP{arrow("adp")}
+              </th>
               {columns.map((column) => (
-                <td key={column.key} className="m-col-num">
-                  {column.format(statValue(player, column.key))}
-                </td>
+                <th
+                  key={column.key}
+                  scope="col"
+                  className="m-col-num"
+                  aria-sort={sort.key === column.key ? (sort.direction === "asc" ? "ascending" : "descending") : undefined}
+                >
+                  {column.abbr}
+                  {arrow(column.key)}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {players.map((player) => (
+              <tr key={player.id} className="player-row" onClick={rowClick(player, onOpen)}>
+                <th scope="row" className="m-col-player">
+                  <PlayerOpenButton player={player} onOpen={onOpen} />
+                </th>
+                <td className="m-col-team">
+                  <TeamMark team={player.nhlTeam} />
+                </td>
+                <td className="m-col-pos">{player.position}</td>
+                <td className="m-col-num">{formatAdp(player.adp)}</td>
+                {columns.map((column) => (
+                  <td key={column.key} className="m-col-num">
+                    {column.format(statValue(player, column.key))}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

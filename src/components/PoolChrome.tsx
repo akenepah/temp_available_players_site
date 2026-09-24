@@ -95,12 +95,40 @@ export function PoolLoadingState() {
   );
 }
 
-export function PoolEmptyState({ onClear }: { onClear: () => void }) {
+/**
+ * No results: says what is narrowing the list and offers a separate way out
+ * for each cause, so clearing the search never also throws away the filters.
+ */
+export function PoolEmptyState({
+  search,
+  hasFilters,
+  onClearSearch,
+  onClearFilters,
+}: {
+  search: string;
+  hasFilters: boolean;
+  onClearSearch: () => void;
+  onClearFilters: () => void;
+}) {
+  const body = search && hasFilters
+    ? `No players match “${search}” with these filters.`
+    : search
+      ? `No players match “${search}”.`
+      : "No players match these filters.";
   return (
-    <StateCard title="No players found" body="Try another name or clear your filters.">
-      <button type="button" className="btn btn--primary btn--block" onClick={onClear}>
-        Clear filters
-      </button>
+    <StateCard title="No players found" body={body}>
+      <div className="state-card__actions">
+        {search ? (
+          <button type="button" className="btn btn--primary btn--block" onClick={onClearSearch}>
+            Clear search
+          </button>
+        ) : null}
+        {hasFilters ? (
+          <button type="button" className={`btn btn--block ${search ? "btn--secondary" : "btn--primary"}`} onClick={onClearFilters}>
+            Clear filters
+          </button>
+        ) : null}
+      </div>
     </StateCard>
   );
 }

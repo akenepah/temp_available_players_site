@@ -313,8 +313,8 @@ button:disabled {
 
 .controls {
   display: grid;
-  grid-template-columns: 82px 82px minmax(0, 1fr) 160px 164px 76px;
-  grid-template-areas: "tabs tabs search team position reset";
+  grid-template-columns: 82px 82px minmax(0, 1fr) 150px 136px;
+  grid-template-areas: "tabs tabs search filters clear";
   gap: 8px;
 }
 
@@ -356,20 +356,33 @@ button:disabled {
   height: 12px;
 }
 
-.controls__team {
-  grid-area: team;
+.controls__filters {
+  grid-area: filters;
 }
 
-.controls__position {
-  grid-area: position;
+/* Active filters are counted in the button and outlined, so the state is visible without colour alone. */
+.controls__filters--active {
+  border-color: var(--cyan);
+  box-shadow: inset 0 0 0 1px var(--cyan);
+}
+
+.controls__count {
+  margin-left: -2px;
+  color: var(--cyan-link);
 }
 
 .controls__sort {
   grid-area: sort;
 }
 
-.controls__reset {
-  grid-area: reset;
+.controls__clear {
+  grid-area: clear;
+  letter-spacing: 0.04em;
+}
+
+.btn:disabled {
+  color: #9aa7ad;
+  cursor: default;
 }
 
 .btn {
@@ -397,10 +410,6 @@ button:disabled {
 .btn--select {
   text-transform: none;
   letter-spacing: 0.06em;
-}
-
-.controls__reset {
-  letter-spacing: 0.04em;
 }
 
 .btn--tab[aria-pressed="true"],
@@ -587,6 +596,36 @@ button:disabled {
 .option-row:has(input:focus-visible) {
   outline: 3px solid var(--focus);
   outline-offset: -3px;
+}
+
+.option-row__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.option-row__count {
+  flex: none;
+  margin-left: auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--navy-muted);
+}
+
+.option-row--checked .option-row__count {
+  color: var(--white);
+}
+
+.option-row--empty {
+  color: var(--text-muted);
+}
+
+.panel-title__count {
+  color: var(--cyan-link);
+}
+
+.state-card__actions {
+  display: grid;
+  gap: 8px;
 }
 
 .option-row__mark {
@@ -1415,7 +1454,7 @@ button:disabled {
   }
 
   .controls {
-    grid-template-columns: 82px 82px minmax(0, 1fr) 150px 150px 76px;
+    grid-template-columns: 82px 82px minmax(0, 1fr) 140px 130px;
   }
 
   .summary__item--count dd {
@@ -1478,10 +1517,10 @@ button:disabled {
   }
 
   .controls {
-    grid-template-columns: repeat(2, 1fr) minmax(0, 2fr) repeat(2, 1fr) 76px;
+    grid-template-columns: 82px 82px minmax(0, 1fr) 140px 130px;
     grid-template-areas:
-      "tabs tabs search search search search"
-      "team team position position reset reset";
+      "tabs tabs search search search"
+      "filters filters filters filters clear";
   }
 
 }
@@ -1489,6 +1528,11 @@ button:disabled {
 /* ---------------------------------------------------------------- Mobile */
 
 @media (max-width: 767px) {
+  /* Comfortable touch targets for filter options. */
+  .option-row {
+    min-height: 44px;
+  }
+
   .hero {
     height: auto;
   }
@@ -1607,25 +1651,17 @@ button:disabled {
   }
 
   .controls {
-    grid-template-columns: 1fr 1fr 88px;
+    grid-template-columns: 1fr 1fr;
     grid-template-areas:
-      "tabs tabs tabs"
-      "search search search"
-      "team position position"
-      "sort sort reset";
+      "tabs tabs"
+      "search search"
+      "filters clear"
+      "sort sort";
   }
 
   .controls__tabs {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
-  }
-
-  .controls__team {
-    grid-column: 1 / 2;
-  }
-
-  .controls__position {
-    grid-column: 2 / 4;
   }
 
   .btn--tab,
@@ -1656,6 +1692,7 @@ button:disabled {
   .btn--chip {
     width: 100%;
     min-width: 0;
+    padding: 0 10px;
   }
 
   .chips__clear {
@@ -1724,6 +1761,32 @@ button:disabled {
 }
 
 /* ------------------------------------------------------ Mobile table */
+
+/* Cues for the horizontally scrolling stats: a fade at the right edge while
+   more columns remain, and a shadow on the pinned player column once scrolled. */
+.mobile-table-wrap {
+  position: relative;
+}
+
+.mobile-table-wrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 36px;
+  pointer-events: none;
+  background: linear-gradient(to right, rgb(243 239 229 / 0), rgb(243 239 229 / 0.95));
+  transition: opacity 0.2s ease;
+}
+
+.mobile-table-wrap.is-end::after {
+  opacity: 0;
+}
+
+.mobile-table-wrap.is-scrolled .m-col-player {
+  box-shadow: 8px 0 10px -8px rgb(8 43 60 / 0.35);
+}
 
 .mobile-table-scroll {
   overflow-x: auto;

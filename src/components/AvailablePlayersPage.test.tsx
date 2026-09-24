@@ -22,10 +22,16 @@ async function renderLoaded() {
   return user;
 }
 
-async function openFilters(user: ReturnType<typeof userEvent.setup>, trigger: RegExp = /NHL team filter/) {
-  await user.click(screen.getByRole("button", { name: trigger }));
-  return screen.getByRole("dialog", { name: "Filter players" });
+async function openFilters(user: ReturnType<typeof userEvent.setup>, section: "team" | "position" | "franchise" = "team") {
+  await user.click(screen.getByRole("button", { name: /^Filters/ }));
+  const panel = screen.getByRole("dialog", { name: /Filter players/ });
+  if (section === "position") await openSelector(user, panel, "NHL Position");
+  if (section === "franchise") await openSelector(user, panel, "Previous F2F Franchise");
+  return panel;
 }
+
+/** Filter options are announced with their live count, e.g. "Minnesota Wild, 3 players". */
+const option = (label: string) => new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}, \\d+ players?$`);
 
 const selectorButton = (panel: HTMLElement, label: string) => within(panel).getByRole("button", { description: label });
 
@@ -34,7 +40,7 @@ async function openSelector(user: ReturnType<typeof userEvent.setup>, panel: HTM
   if (button.getAttribute("aria-expanded") !== "true") await user.click(button);
 }
 
-const accessibleName = (input: HTMLElement) => input.closest("label")!.textContent!.trim();
+const accessibleName = (input: HTMLElement) => input.closest("label")!.querySelector(".option-row__text")!.textContent!.trim();
 
 const bodyRows = () => within(screen.getByRole("table")).getAllByRole("row").slice(1);
 const rowNames = () => bodyRows().map((row) => within(row).getByRole("button").getAttribute("aria-label")!.replace(", open player profile", ""));
@@ -106,17 +112,17 @@ describe("Available Players page", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Player pool unavailable");
   });
 
-  it("renders the skater table by default, ordered by ADP, 8 per page, without PIM", async () => {
+  it("renders the skater table by default, ordered by ADP, 20 per page, without PIM", async () => {
     mockFetch();
     await renderLoaded();
     const headers = within(screen.getByRole("table")).getAllByRole("columnheader").map((th) => th.textContent?.replace(/\s*[↑↓]/, "").trim());
     expect(headers).toEqual(["#", "Player", "Team", "Pos", "Prev. F2F", "ADP", "GP", "G", "A", "PTS", "PPP", "SOG", "HIT", "BLK", "Open"]);
     expect(headers).not.toContain("PIM");
-    expect(bodyRows()).toHaveLength(8);
+    expect(bodyRows()).toHaveLength(20);
     expect(rowNames()[0]).toBe("Kirill Kaprizov");
     expect(screen.getByText("119 returning skaters · Yahoo ADP ↑")).toBeInTheDocument();
-    expect(screen.getByText("Showing 1–8 of 119 skaters")).toBeInTheDocument();
-    expect(screen.getByLabelText("Page 1 of 15")).toBeInTheDocument();
+    expect(screen.getByText("Showing 1–20 of 119 skaters")).toBeInTheDocument();
+    expect(screen.getByLabelText("Page 1 of 6")).toBeInTheDocument();
   });
 
   it("paginates and disables unavailable actions", async () => {
@@ -124,10 +130,10 @@ describe("Available Players page", () => {
     const user = await renderLoaded();
     expect(screen.getByRole("button", { name: /Previous/ })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /Next/ }));
-    expect(screen.getByText("Showing 9–16 of 119 skaters")).toBeInTheDocument();
-    expect(within(bodyRows()[0]!).getAllByRole("cell")[0]).toHaveTextContent("9");
-    for (let i = 0; i < 13; i++) await user.click(screen.getByRole("button", { name: /Next/ }));
-    expect(screen.getByText("Showing 113–119 of 119 skaters")).toBeInTheDocument();
+    expect(screen.getByText("Showing 21–40 of 119 skaters")).toBeInTheDocument();
+    expect(within(bodyRows()[0]!).getAllByRole("cell")[0]).toHaveTextContent("21");
+    for (let i = 0; i < 4; i++) await user.click(screen.getByRole("button", { name: /Next/ }));
+    expect(screen.getByText("Showing 101–119 of 119 skaters")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Next/ })).toBeDisabled();
     // Unavailable ADP sorts to the end.
     expect(within(bodyRows().at(-1)!).getAllByRole("cell")[4]).toHaveTextContent("—");
@@ -138,7 +144,7 @@ describe("Available Players page", () => {
     const user = await renderLoaded();
     await user.click(screen.getByRole("button", { name: /Next/ }));
     await user.click(screen.getByRole("button", { name: "Sort by Points" }));
-    expect(screen.getByText("Showing 1–8 of 119 skaters")).toBeInTheDocument();
+    expect(screen.getByText("Showing 1–20 of 119 skaters")).toBeInTheDocument();
     expect(screen.getByText("119 skaters · Points high to low")).toBeInTheDocument();
     expect(rowNames()[0]).toBe("Martin Necas");
     expect(screen.getByRole("columnheader", { name: /PTS/ })).toHaveAttribute("aria-sort", "descending");
@@ -152,15 +158,28 @@ describe("Available Players page", () => {
     expect(screen.getByText("1 match for “necas”")).toBeInTheDocument();
   });
 
-  it("shows the empty state and clears back to the full pool", async () => {
+  it("explains an empty result and offers a separate way out for search and for filters", async () => {
     mockFetch();
     const user = await renderLoaded();
     await user.type(screen.getByLabelText("Search players"), "zzzz");
     expect(screen.getByRole("heading", { name: "No players found" })).toBeInTheDocument();
-    expect(screen.getByText("Try another name or clear your filters.")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Clear filters" }));
-    expect(bodyRows()).toHaveLength(8);
+    expect(screen.getByText("No players match “zzzz”.")).toBeInTheDocument();
+    const card = screen.getByRole("heading", { name: "No players found" }).parentElement!;
+    expect(within(card).queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+    await user.click(within(card).getByRole("button", { name: "Clear search" }));
+    expect(bodyRows()).toHaveLength(20);
     expect(screen.getByLabelText("Search players")).toHaveValue("");
+
+    // Search + filters: clearing the search keeps the filters.
+    const panel = await openFilters(user);
+    await user.click(within(panel).getByRole("radio", { name: option("Minnesota Wild") }));
+    await user.click(within(panel).getByRole("button", { name: /^Show/ }));
+    await user.type(screen.getByLabelText("Search players"), "zzzz");
+    expect(screen.getByText("No players match “zzzz” with these filters.")).toBeInTheDocument();
+    const both = screen.getByRole("heading", { name: "No players found" }).parentElement!;
+    await user.click(within(both).getByRole("button", { name: "Clear search" }));
+    expect(rowNames()).toEqual(["Kirill Kaprizov", "Brock Faber", "Blake Coleman"]);
+    expect(screen.getByRole("button", { name: "Filters, 1 active" })).toBeInTheDocument();
   });
 
   it("lists all 32 NHL teams alphabetically, including teams with no available players", async () => {
@@ -174,7 +193,7 @@ describe("Available Players page", () => {
     expect(teams.slice(1)).toEqual([...teams.slice(1)].sort((a, b) => String(a).localeCompare(String(b))));
     expect(teams).toContain("Philadelphia Flyers"); // no available players in the fixture pool
     expect(teams).toContain("Utah Mammoth");
-    expect(within(panel).getByRole("radio", { name: "All NHL Teams" })).toBeChecked();
+    expect(within(panel).getByRole("radio", { name: option("All NHL Teams") })).toBeChecked();
   });
 
   it("lists exactly the 10 canonical franchises and never Jet Blue Holiday", async () => {
@@ -205,32 +224,32 @@ describe("Available Players page", () => {
   it("supports multi-select positions (OR) that stay open while choosing", async () => {
     mockFetch();
     const user = await renderLoaded();
-    const panel = await openFilters(user, /Position filter/);
-    await user.click(within(panel).getByRole("checkbox", { name: "Left wing" }));
-    await user.click(within(panel).getByRole("checkbox", { name: "Right wing" }));
-    expect(within(panel).getByRole("checkbox", { name: "Left wing" })).toBeChecked();
-    expect(within(panel).getByRole("checkbox", { name: "Right wing" })).toBeChecked();
-    expect(within(panel).getByRole("checkbox", { name: "All Positions" })).not.toBeChecked();
+    const panel = await openFilters(user, "position");
+    await user.click(within(panel).getByRole("checkbox", { name: option("Left wing") }));
+    await user.click(within(panel).getByRole("checkbox", { name: option("Right wing") }));
+    expect(within(panel).getByRole("checkbox", { name: option("Left wing") })).toBeChecked();
+    expect(within(panel).getByRole("checkbox", { name: option("Right wing") })).toBeChecked();
+    expect(within(panel).getByRole("checkbox", { name: option("All Positions") })).not.toBeChecked();
     expect(selectorButton(panel, "NHL Position")).toHaveTextContent("Left wing, Right wing");
     // Fixture: 30 LW + 30 RW filler plus named LW/RW players.
     const count = Number(/Show (\d+) players/.exec(within(panel).getByRole("button", { name: /^Show/ }).textContent!)![1]);
     await user.click(within(panel).getByRole("button", { name: /^Show/ }));
-    expect(screen.getByText(`Showing 1–8 of ${count} skaters`)).toBeInTheDocument();
+    expect(screen.getByText(`Showing 1–20 of ${count} skaters`)).toBeInTheDocument();
     expect(new Set(bodyRows().map((row) => within(row).getAllByRole("cell")[2]!.textContent))).toEqual(new Set(["LW", "RW"]));
-    expect(screen.getByRole("button", { name: "Position filter: LW + RW" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filters, 2 active" })).toHaveTextContent("Filters(2)");
   });
 
   it("returns to All Positions when every position is deselected, or via All Positions", async () => {
     mockFetch();
     const user = await renderLoaded();
-    const panel = await openFilters(user, /Position filter/);
-    await user.click(within(panel).getByRole("checkbox", { name: "Defense" }));
-    await user.click(within(panel).getByRole("checkbox", { name: "Defense" }));
-    expect(within(panel).getByRole("checkbox", { name: "All Positions" })).toBeChecked();
-    await user.click(within(panel).getByRole("checkbox", { name: "Centre" }));
-    await user.click(within(panel).getByRole("checkbox", { name: "Defense" }));
-    await user.click(within(panel).getByRole("checkbox", { name: "All Positions" }));
-    expect(within(panel).getByRole("checkbox", { name: "Centre" })).not.toBeChecked();
+    const panel = await openFilters(user, "position");
+    await user.click(within(panel).getByRole("checkbox", { name: option("Defense") }));
+    await user.click(within(panel).getByRole("checkbox", { name: option("Defense") }));
+    expect(within(panel).getByRole("checkbox", { name: option("All Positions") })).toBeChecked();
+    await user.click(within(panel).getByRole("checkbox", { name: option("Centre") }));
+    await user.click(within(panel).getByRole("checkbox", { name: option("Defense") }));
+    await user.click(within(panel).getByRole("checkbox", { name: option("All Positions") }));
+    expect(within(panel).getByRole("checkbox", { name: option("Centre") })).not.toBeChecked();
     expect(within(panel).getByRole("button", { name: "Show 119 players" })).toBeInTheDocument();
   });
 
@@ -239,14 +258,14 @@ describe("Available Players page", () => {
     const user = await renderLoaded();
     await user.click(screen.getByRole("button", { name: /Next/ }));
     const panel = await openFilters(user);
-    await user.click(within(panel).getByRole("radio", { name: "Minnesota Wild" }));
+    await user.click(within(panel).getByRole("radio", { name: option("Minnesota Wild") }));
     expect(selectorButton(panel, "NHL Team")).toHaveTextContent("Minnesota Wild");
     await openSelector(user, panel, "NHL Position");
-    await user.click(within(panel).getByRole("checkbox", { name: "Left wing" }));
-    await user.click(within(panel).getByRole("checkbox", { name: "Defense" }));
+    await user.click(within(panel).getByRole("checkbox", { name: option("Left wing") }));
+    await user.click(within(panel).getByRole("checkbox", { name: option("Defense") }));
     expect(within(panel).getByRole("button", { name: "Show 3 players" })).toBeInTheDocument();
     await openSelector(user, panel, "Previous F2F Franchise");
-    await user.click(within(panel).getByRole("radio", { name: "The Offensive Otters" }));
+    await user.click(within(panel).getByRole("radio", { name: option("The Offensive Otters") }));
     // MIN AND (LW OR D) AND The Offensive Otters
     await user.click(within(panel).getByRole("button", { name: "Show 1 player" }));
 
@@ -279,23 +298,23 @@ describe("Available Players page", () => {
     mockFetch();
     const user = await renderLoaded();
     let panel = await openFilters(user);
-    await user.click(within(panel).getByRole("radio", { name: "Minnesota Wild" }));
+    await user.click(within(panel).getByRole("radio", { name: option("Minnesota Wild") }));
     await openSelector(user, panel, "NHL Team");
-    await user.click(within(panel).getByRole("radio", { name: "All NHL Teams" }));
+    await user.click(within(panel).getByRole("radio", { name: option("All NHL Teams") }));
     expect(selectorButton(panel, "NHL Team")).toHaveTextContent("All NHL Teams");
     await openSelector(user, panel, "Previous F2F Franchise");
-    await user.click(within(panel).getByRole("radio", { name: "Purple Reign" }));
+    await user.click(within(panel).getByRole("radio", { name: option("Purple Reign") }));
     await openSelector(user, panel, "Previous F2F Franchise");
-    await user.click(within(panel).getByRole("radio", { name: "All Franchises" }));
+    await user.click(within(panel).getByRole("radio", { name: option("All Franchises") }));
     expect(selectorButton(panel, "Previous F2F Franchise")).toHaveTextContent("All Franchises");
     expect(within(panel).getByRole("button", { name: "Show 119 players" })).toBeInTheDocument();
 
     await openSelector(user, panel, "NHL Team");
-    await user.click(within(panel).getByRole("radio", { name: "Dallas Stars" }));
+    await user.click(within(panel).getByRole("radio", { name: option("Dallas Stars") }));
     await openSelector(user, panel, "NHL Position");
-    await user.click(within(panel).getByRole("checkbox", { name: "Centre" }));
+    await user.click(within(panel).getByRole("checkbox", { name: option("Centre") }));
     await openSelector(user, panel, "Previous F2F Franchise");
-    await user.click(within(panel).getByRole("radio", { name: "Stache-ing Ginos" }));
+    await user.click(within(panel).getByRole("radio", { name: option("Stache-ing Ginos") }));
     await user.click(within(panel).getByRole("button", { name: "Clear" }));
     expect(selectorButton(panel, "NHL Team")).toHaveTextContent("All NHL Teams");
     expect(selectorButton(panel, "NHL Position")).toHaveTextContent("All Positions");
@@ -306,7 +325,7 @@ describe("Available Players page", () => {
 
     // A team with no available players applies cleanly to the empty state.
     panel = await openFilters(user);
-    await user.click(within(panel).getByRole("radio", { name: "Philadelphia Flyers" }));
+    await user.click(within(panel).getByRole("radio", { name: option("Philadelphia Flyers") }));
     await user.click(within(panel).getByRole("button", { name: "Show 0 players" }));
     expect(screen.getByRole("heading", { name: "No players found" })).toBeInTheDocument();
   });
@@ -315,7 +334,7 @@ describe("Available Players page", () => {
     mockFetch();
     const user = await renderLoaded();
     const panel = await openFilters(user);
-    await user.click(within(panel).getByRole("radio", { name: "Minnesota Wild" }));
+    await user.click(within(panel).getByRole("radio", { name: option("Minnesota Wild") }));
     await user.click(within(panel).getByRole("button", { name: "Show 3 players" }));
     await user.click(screen.getByRole("button", { name: "Kirill Kaprizov, open player profile" }));
     expect(within(screen.getByRole("dialog")).getByText("1 of 3")).toBeInTheDocument();
@@ -376,30 +395,159 @@ describe("Available Players page", () => {
     await user.click(screen.getByRole("button", { name: "Clear search" }));
     expect(screen.getByLabelText("Search players")).toHaveValue("");
     expect(screen.getByLabelText("Search players")).toHaveFocus();
-    expect(bodyRows()).toHaveLength(8);
+    expect(bodyRows()).toHaveLength(20);
     expect(screen.queryByRole("button", { name: "Clear search" })).not.toBeInTheDocument();
+
+    // Escape in the search field clears it too.
+    await user.type(screen.getByLabelText("Search players"), "necas");
+    await user.keyboard("{Escape}");
+    expect(screen.getByLabelText("Search players")).toHaveValue("");
+  });
+
+  it("clears only the search with ×, and only the filters with Clear filters", async () => {
+    mockFetch();
+    const user = await renderLoaded();
+    const clearFilters = screen.getByRole("button", { name: "Clear filters" });
+    expect(clearFilters).toBeDisabled();
+    const panel = await openFilters(user);
+    await user.click(within(panel).getByRole("radio", { name: option("Minnesota Wild") }));
+    await user.click(within(panel).getByRole("button", { name: /^Show/ }));
+    await user.click(screen.getByRole("button", { name: "Sort by Points" }));
+    await user.type(screen.getByLabelText("Search players"), "k");
+
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(screen.getByLabelText("Search players")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Filters, 1 active" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /PTS/ })).toHaveAttribute("aria-sort", "descending");
+
+    await user.type(screen.getByLabelText("Search players"), "kap");
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(screen.getByLabelText("Search players")).toHaveValue("kap");
+    expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /PTS/ })).toHaveAttribute("aria-sort", "descending");
+    expect(screen.getByRole("button", { name: "Clear filters" })).toBeDisabled();
+  });
+
+  it("shows live counts beside filter options and the active count in the panel", async () => {
+    mockFetch();
+    const user = await renderLoaded();
+    const panel = await openFilters(user);
+    expect(within(panel).getByRole("radio", { name: "Minnesota Wild, 3 players" })).toBeInTheDocument();
+    expect(within(panel).getByRole("radio", { name: "Philadelphia Flyers, 0 players" })).toBeInTheDocument();
+    await user.click(within(panel).getByRole("radio", { name: option("Minnesota Wild") }));
+    expect(within(panel).getByRole("heading", { name: "Filter players (1)" })).toBeInTheDocument();
+    await openSelector(user, panel, "NHL Position");
+    // Counts for a dimension keep the other selections: Minnesota has 2 LW and 1 D.
+    expect(within(panel).getByRole("checkbox", { name: "Left wing, 2 players" })).toBeInTheDocument();
+    expect(within(panel).getByRole("checkbox", { name: "Defense, 1 player" })).toBeInTheDocument();
   });
 
   it("lets the reader choose how many players to show per page", async () => {
     mockFetch();
     const user = await renderLoaded();
     await user.click(screen.getByRole("button", { name: /Next/ }));
-    const perPage = screen.getByRole("combobox", { name: "Per page" });
-    expect(perPage).toHaveValue("8");
-    expect([...(perPage as HTMLSelectElement).options].map((o) => o.value)).toEqual(["8", "25", "50", "100"]);
-    await user.selectOptions(perPage, "25");
-    expect(bodyRows()).toHaveLength(25);
-    expect(screen.getByText("Showing 1–25 of 119 skaters")).toBeInTheDocument();
-    expect(screen.getByLabelText("Page 1 of 5")).toBeInTheDocument();
-    await user.selectOptions(perPage, "100");
-    expect(screen.getByLabelText("Page 1 of 2")).toBeInTheDocument();
+    const perPage = screen.getByRole("combobox", { name: "Rows per page" });
+    expect(perPage).toHaveValue("20");
+    expect([...(perPage as HTMLSelectElement).options].map((o) => o.value)).toEqual(["10", "20", "50"]);
+    await user.selectOptions(perPage, "50");
+    expect(bodyRows()).toHaveLength(50);
+    expect(screen.getByText("Showing 1–50 of 119 skaters")).toBeInTheDocument();
+    expect(screen.getByLabelText("Page 1 of 3")).toBeInTheDocument();
+    expect(window.location.search).toBe("?size=50");
+    await user.selectOptions(perPage, "10");
+    expect(screen.getByLabelText("Page 1 of 12")).toBeInTheDocument();
+  });
+
+  it("restores the whole browse state from the URL on load or refresh", async () => {
+    window.history.replaceState(null, "", "/?q=a&team=MIN&pos=LW,D&sort=pts&size=10&page=1");
+    mockFetch();
+    await renderLoaded();
+    expect(screen.getByLabelText("Search players")).toHaveValue("a");
+    expect(screen.getByRole("button", { name: "Filters, 3 active" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /PTS/ })).toHaveAttribute("aria-sort", "descending");
+    expect(screen.getByRole("combobox", { name: "Rows per page" })).toHaveValue("10");
+    // MIN AND (LW OR D) AND name contains "a": Kaprizov, Faber, Coleman.
+    expect(rowNames()).toEqual(["Kirill Kaprizov", "Brock Faber", "Blake Coleman"]);
+  });
+
+  it("restores the page from the URL", async () => {
+    window.history.replaceState(null, "", "/?page=3");
+    mockFetch();
+    await renderLoaded();
+    expect(screen.getByText("Showing 41–60 of 119 skaters")).toBeInTheDocument();
+  });
+
+  it("settles a page past the end on the last page", async () => {
+    window.history.replaceState(null, "", "/?page=99");
+    mockFetch();
+    await renderLoaded();
+    expect(screen.getByText("Showing 101–119 of 119 skaters")).toBeInTheDocument();
+    await waitFor(() => expect(window.location.search).toBe("?page=6"));
+  });
+
+  it("keeps filters, search, sort and page when a profile is closed", async () => {
+    mockFetch();
+    const user = await renderLoaded();
+    const panel = await openFilters(user, "position");
+    await user.click(within(panel).getByRole("checkbox", { name: option("Centre") }));
+    await user.click(within(panel).getByRole("button", { name: /^Show/ }));
+    await user.click(screen.getByRole("button", { name: "Sort by Points" }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Rows per page" }), "10");
+    await user.click(screen.getByRole("button", { name: /Next/ }));
+    const listUrl = window.location.search;
+    expect(listUrl).toBe("?pos=C&sort=pts&page=2&size=10");
+
+    await user.click(bodyRows()[0]!.querySelector<HTMLButtonElement>(".player-open")!);
+    expect(window.location.search).toMatch(/^\?pos=C&sort=pts&page=2&size=10&player=/);
+    await user.click(screen.getByRole("button", { name: "Close player profile" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(window.location.search).toBe(listUrl);
+    expect(screen.getByText("Showing 11–20 of", { exact: false })).toBeInTheDocument();
+  });
+
+  it("steps Back and Forward through filter and page changes", async () => {
+    mockFetch();
+    const user = await renderLoaded();
+    const panel = await openFilters(user);
+    await user.click(within(panel).getByRole("radio", { name: option("Dallas Stars") }));
+    await user.click(within(panel).getByRole("button", { name: /^Show/ }));
+    expect(window.location.search).toBe("?team=DAL");
+    await user.click(screen.getByRole("button", { name: "Goalies" }));
+    expect(window.location.search).toBe("?tab=goalies&team=DAL");
+
+    window.history.back();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Skaters" })).toHaveAttribute("aria-pressed", "true"));
+    expect(rowNames()).toEqual(["Wyatt Johnston", "Miro Heiskanen"]);
+    window.history.back();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument());
+    window.history.forward();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Filters, 1 active" })).toBeInTheDocument());
+  });
+
+  it("reopens a player with Forward after Back closed it", async () => {
+    mockFetch();
+    const user = await renderLoaded();
+    await user.click(screen.getByRole("button", { name: "Martin Necas, open player profile" }));
+    window.history.back();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    window.history.forward();
+    expect(await screen.findByRole("dialog", { name: /Martin Necas/ })).toBeInTheDocument();
+  });
+
+  it("keeps the search in the URL as the reader types", async () => {
+    mockFetch();
+    const user = await renderLoaded();
+    await user.type(screen.getByLabelText("Search players"), "kap");
+    expect(window.location.search).toBe("?q=kap");
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(window.location.search).toBe("");
   });
 
   it("hides skater positions in goalie mode", async () => {
     mockFetch();
     const user = await renderLoaded();
     await user.click(screen.getByRole("button", { name: "Goalies" }));
-    const panel = await openFilters(user, /Position filter/);
+    const panel = await openFilters(user);
     expect(within(panel).queryByRole("button", { description: "NHL Position" })).not.toBeInTheDocument();
     expect(within(panel).queryByRole("checkbox")).not.toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Show 23 players" })).toBeInTheDocument();
@@ -482,16 +630,16 @@ describe("Available Players page", () => {
     expect(within(drawer).getByText("Released")).toBeInTheDocument();
   });
 
-  it("uses the mobile composition: 6 per page, sort screen, filter screen, full-screen profile", async () => {
+  it("uses the mobile composition: sort screen, filter screen, swipe cue, full-screen profile", async () => {
     viewport.mobile = true;
     mockFetch();
     const user = await renderLoaded();
-    expect(bodyRows()).toHaveLength(6);
+    expect(bodyRows()).toHaveLength(20);
     expect(screen.getByPlaceholderText("Search players...")).toBeInTheDocument();
-    expect(screen.getByText("2025–26 actuals · Swipe stats →")).toBeInTheDocument();
+    expect(screen.getByText("2025–26 actuals · Swipe for more stats →")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Next/ }));
-    expect(screen.getByText("Showing 7–12 of 119 skaters")).toBeInTheDocument();
-    expect(screen.getByLabelText("Page 2 of 20")).toBeInTheDocument();
+    expect(screen.getByText("Showing 21–40 of 119 skaters")).toBeInTheDocument();
+    expect(screen.getByLabelText("Page 2 of 6")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^Sort:/ }));
     const sortScreen = screen.getByRole("dialog", { name: "Sort players" });
@@ -500,13 +648,13 @@ describe("Available Players page", () => {
     await user.click(within(sortScreen).getByRole("button", { name: "Points · High to low" }));
     expect(screen.getByRole("button", { name: "Sort: Points ↓" })).toBeInTheDocument();
 
-    const filterScreen = await openFilters(user, /Position filter/);
+    const filterScreen = await openFilters(user, "position");
     expect(within(filterScreen).getByRole("button", { name: "‹ Back to players" })).toBeInTheDocument();
-    await user.click(within(filterScreen).getByRole("checkbox", { name: "Centre" }));
-    await user.click(within(filterScreen).getByRole("checkbox", { name: "Defense" }));
+    await user.click(within(filterScreen).getByRole("checkbox", { name: option("Centre") }));
+    await user.click(within(filterScreen).getByRole("checkbox", { name: option("Defense") }));
     await user.click(within(filterScreen).getByRole("button", { name: /^Show \d+ players$/ }));
-    expect(screen.getByRole("button", { name: "Position filter: C + D" })).toBeInTheDocument();
-    expect(screen.getByText("Showing 1–6 of", { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filters, 2 active" })).toBeInTheDocument();
+    expect(screen.getByText("Showing 1–20 of", { exact: false })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Clear all filters" }));
 
     await user.click(screen.getByRole("button", { name: "Martin Necas, open player profile" }));
@@ -514,7 +662,7 @@ describe("Available Players page", () => {
     await user.click(within(sheet).getByRole("button", { name: "Next player" }));
     expect(screen.getByRole("dialog", { name: /Kirill Kaprizov/ })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "‹ Back" }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     // List state is preserved.
     expect(screen.getByRole("button", { name: "Sort: Points ↓" })).toBeInTheDocument();
     expect(rowNames()[0]).toBe("Martin Necas");

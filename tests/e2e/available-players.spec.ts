@@ -99,6 +99,43 @@ test.describe("desktop", () => {
     await expect(page.getByRole("dialog", { name: /Martin Necas/ })).toBeVisible();
   });
 
+  test("reload keeps filters, sort, page size and the open profile", async ({ page }) => {
+    await serveFixture(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: /^Filters/ }).click();
+    await page.getByRole("dialog").locator("label.option-row", { hasText: "Minnesota Wild" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: /^Show/ }).click();
+    await page.getByRole("button", { name: "Sort by Points" }).click();
+    await page.getByRole("button", { name: "Kirill Kaprizov, open player profile" }).click();
+    await expect(page).toHaveURL(/\?team=MIN&sort=pts&player=kaprizov$/);
+    await page.reload();
+    await expect(page.getByRole("dialog", { name: /Kirill Kaprizov/ })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await expect(page).toHaveURL(/\?team=MIN&sort=pts$/);
+    await expect(page.getByRole("button", { name: "Filters, 1 active" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: /Points/ })).toHaveAttribute("aria-sort", "descending");
+    // Back walks through the filter and sort history.
+    await page.goBack();
+    await expect(page).toHaveURL(/\?team=MIN$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
+  });
+
+  test("keyboard: Enter opens a player and Escape returns focus to that row", async ({ page }) => {
+    await serveFixture(page);
+    await page.goto("/");
+    const trigger = page.getByRole("button", { name: "Martin Necas, open player profile" });
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog", { name: /Martin Necas/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Close player profile" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await expect(trigger).toBeFocused();
+  });
+
   test("search field shows a visible keyboard focus state", async ({ page }) => {
     await serveFixture(page);
     await page.goto("/");
@@ -130,17 +167,32 @@ test.describe("mobile", () => {
     await serveFixture(page);
     await page.goto("/");
     await page.getByRole("button", { name: /^Next/ }).click();
-    await page.getByRole("button", { name: "Connor Bedard, open player profile" }).click();
-    await expect(page.getByRole("dialog", { name: /Connor Bedard/ })).toBeVisible();
+    await expect(page).toHaveURL(/\?page=2$/);
+    await page.locator(".player-open").first().click();
+    await expect(page.getByRole("dialog")).toBeVisible();
     await page.goBack();
     await expect(page.getByRole("dialog")).toBeHidden();
-    await expect(page.getByText("Showing 7–12 of 119 skaters")).toBeVisible();
+    await expect(page).toHaveURL(/\?page=2$/);
+    await expect(page.getByText("Showing 21–40 of 119 skaters")).toBeVisible();
+  });
+
+  test("shows a swipe cue that fades once the last stat column is reached", async ({ page }) => {
+    await serveFixture(page);
+    await page.goto("/");
+    const wrap = page.locator(".mobile-table-wrap");
+    await expect(wrap).not.toHaveClass(/is-end/);
+    await page.locator(".mobile-table-scroll").evaluate((el) => {
+      el.scrollLeft = el.scrollWidth;
+      el.dispatchEvent(new Event("scroll"));
+    });
+    await expect(wrap).toHaveClass(/is-end/);
+    await expect(wrap).toHaveClass(/is-scrolled/);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 
   test("Back from the full-screen profile restores the list and scroll position", async ({ page }) => {
     await serveFixture(page);
     await page.goto("/");
-    await page.getByRole("button", { name: /^Next/ }).click();
     const target = page.getByRole("button", { name: "Connor Bedard, open player profile" });
     await target.scrollIntoViewIfNeeded();
     const scrollY = await page.evaluate(() => window.scrollY);
@@ -151,7 +203,7 @@ test.describe("mobile", () => {
     expect(box.width).toBe(390);
     await sheet.getByRole("button", { name: "‹ Back" }).click();
     await expect(sheet).toBeHidden();
-    await expect(page.getByText("Showing 7–12 of 119 skaters")).toBeVisible();
+    await expect(page.getByText("Showing 1–20 of 119 skaters")).toBeVisible();
     expect(Math.abs((await page.evaluate(() => window.scrollY)) - scrollY)).toBeLessThan(2);
   });
 });

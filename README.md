@@ -31,6 +31,26 @@ To preview locally with test data (never commit the result):
 pnpm exec tsx -e 'import {FIXTURE_SNAPSHOT as s} from "./tests/fixtures/pool"; require("fs").writeFileSync("public/data/available-players.json", JSON.stringify(s))'
 ```
 
+## Shareable URLs
+
+The browse state lives in the query string, so refresh, Back/Forward and
+shared links all reproduce it. Defaults are omitted, so an untouched page stays
+at `/`:
+
+| Param | Meaning |
+|---|---|
+| `tab=goalies` | Goalies tab (skaters is the default) |
+| `q` | Search text |
+| `team` | NHL team abbreviation, e.g. `MIN` |
+| `pos` | Skater positions, comma-separated: `LW,RW` |
+| `franchise` | Previous F2F franchise id, e.g. `purple-reign` |
+| `sort`, `dir` | Sort column (`adp`, `pts`, `name`, …) and `asc`/`desc` |
+| `page`, `size` | Page number and rows per page (`10`, `20`, `50`; default 20) |
+| `player` | Open player profile, by snapshot id, e.g. `kirill-kaprizov` |
+
+Typing in search replaces the current history entry. Filters, sort, page, tab and
+opening a profile each add one. See `src/lib/pool/urlState.ts`.
+
 ## Layout
 
 - `src/lib/pool/`: snapshot contract (`types`, `validate`), reference data

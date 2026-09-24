@@ -4,10 +4,12 @@ import { formatAdp, formatDate, formatSavePct, formatSeasonLong } from "./format
 import {
   applyQuery,
   DEFAULT_SORT,
-  DESKTOP_PAGE_SIZE,
+  DEFAULT_PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+  activeFilterCount,
+  facetCounts,
   EMPTY_FILTERS,
   initialQuery,
-  MOBILE_PAGE_SIZE,
   paginate,
   sortOptionsFor,
   sortPlayers,
@@ -21,6 +23,7 @@ import {
 import { FRANCHISES, NHL_TEAMS } from "./reference";
 import { SKATER_COLUMNS, tileColumnsFor } from "./stats";
 import { parseSnapshot, SnapshotValidationError } from "./validate";
+import { DEFAULT_VIEW, parseViewState, serializeViewState, type ViewState } from "./urlState";
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const snapshot = parseSnapshot(clone(FIXTURE_SNAPSHOT));
@@ -245,16 +248,14 @@ describe("filter reference lists", () => {
 describe("pagination", () => {
   const skaters = applyQuery(players, query({ filters: EMPTY_FILTERS }));
 
-  it("pages desktop results 8 at a time", () => {
-    expect(DESKTOP_PAGE_SIZE).toBe(8);
-    expect(paginate(skaters, 1, 8)).toMatchObject({ start: 1, end: 8, page: 1, pageCount: 15, total: 119 });
-    expect(paginate(skaters, 2, 8)).toMatchObject({ start: 9, end: 16, page: 2 });
-    expect(paginate(skaters, 15, 8)).toMatchObject({ start: 113, end: 119, page: 15 });
-  });
-
-  it("pages mobile results 6 at a time", () => {
-    expect(MOBILE_PAGE_SIZE).toBe(6);
-    expect(paginate(skaters, 2, 6)).toMatchObject({ start: 7, end: 12, page: 2, pageCount: 20 });
+  it("offers 10, 20 and 50 rows per page, defaulting to 20", () => {
+    expect(PAGE_SIZE_OPTIONS).toEqual([10, 20, 50]);
+    expect(DEFAULT_PAGE_SIZE).toBe(20);
+    expect(paginate(skaters, 1, 20)).toMatchObject({ start: 1, end: 20, page: 1, pageCount: 6, total: 119 });
+    expect(paginate(skaters, 2, 20)).toMatchObject({ start: 21, end: 40, page: 2 });
+    expect(paginate(skaters, 6, 20)).toMatchObject({ start: 101, end: 119, page: 6 });
+    expect(paginate(skaters, 2, 50)).toMatchObject({ start: 51, end: 100, pageCount: 3 });
+    expect(paginate(skaters, 12, 10)).toMatchObject({ start: 111, end: 119, pageCount: 12 });
   });
 
   it("clamps an out-of-range page to a valid one", () => {
@@ -288,5 +289,76 @@ describe("formatting", () => {
 
   it("does not include PIM among skater statistics", () => {
     expect(SKATER_COLUMNS.map((c) => c.abbr)).toEqual(["GP", "G", "A", "PTS", "PPP", "SOG", "HIT", "BLK"]);
+  });
+});
+
+describe("URL view state", () => {
+  const view = (overrides: Partial<Omit<ViewState, "query">> & { query?: Partial<PoolQuery> } = {}): ViewState => ({
+    ...DEFAULT_VIEW,
+    ...overrides,
+    query: { ...DEFAULT_VIEW.query, ...overrides.query },
+  });
+
+  it("keeps the default view at the bare canonical URL", () => {
+    expect(serializeViewState(DEFAULT_VIEW)).toBe("");
+    expect(parseViewState("")).toEqual(DEFAULT_VIEW);
+  });
+
+  it("round-trips every browse setting", () => {
+    const full = view({
+      query: {
+        type: "skater",
+        search: "kap",
+        filters: { team: "MIN", positions: ["LW", "RW"], franchise: "the-offensive-otters" },
+        sort: { key: "pts", direction: "asc" },
+      },
+      page: 3,
+      pageSize: 50,
+      player: "kaprizov",
+    });
+    const search = serializeViewState(full);
+    expect(search).toBe("?q=kap&team=MIN&pos=LW,RW&franchise=the-offensive-otters&sort=pts&dir=asc&page=3&size=50&player=kaprizov");
+    expect(parseViewState(search)).toEqual(full);
+  });
+
+  it("omits a sort direction that is the column's natural default", () => {
+    expect(serializeViewState(view({ query: { sort: { key: "pts", direction: "desc" } } }))).toBe("?sort=pts");
+    expect(parseViewState("?sort=pts").query.sort).toEqual({ key: "pts", direction: "desc" });
+  });
+
+  it("records the goalie tab and ignores skater-only settings there", () => {
+    const parsed = parseViewState("?tab=goalies&pos=LW&sort=hit");
+    expect(parsed.query.type).toBe("goalie");
+    expect(parsed.query.filters.positions).toEqual([]);
+    expect(parsed.query.sort).toEqual(DEFAULT_VIEW.query.sort);
+  });
+
+  it("falls back safely on unknown or malformed values", () => {
+    const parsed = parseViewState("?team=XYZ&pos=LW,ZZ,lw&franchise=nope&sort=bogus&dir=up&page=-4&size=7");
+    expect(parsed.query.filters).toEqual({ team: null, positions: ["LW"], franchise: null });
+    expect(parsed.query.sort).toEqual(DEFAULT_VIEW.query.sort);
+    expect(parsed.page).toBe(1);
+    expect(parsed.pageSize).toBe(DEFAULT_PAGE_SIZE);
+  });
+
+  it("maps the obsolete franchise id to the canonical franchise", () => {
+    expect(parseViewState("?franchise=jet-blue-holiday").query.filters.franchise).toBe("mccaben-it-real-goes-wrong");
+  });
+});
+
+describe("filter counts", () => {
+  it("counts active filters, one per position", () => {
+    expect(activeFilterCount(EMPTY_FILTERS)).toBe(0);
+    expect(activeFilterCount({ team: "MIN", positions: ["LW", "RW"], franchise: "purple-reign" })).toBe(4);
+  });
+
+  it("counts each option with the other dimensions kept", () => {
+    const counts = facetCounts(players, query(), { team: "MIN", positions: [], franchise: null });
+    expect(counts.total).toBe(3);
+    expect(counts.position.get("LW")).toBe(2);
+    expect(counts.position.get("D")).toBe(1);
+    // The team dimension ignores its own selection, so other teams still show their totals.
+    expect(counts.allTeams).toBe(119);
+    expect(counts.team.get("MIN")).toBe(3);
   });
 });
