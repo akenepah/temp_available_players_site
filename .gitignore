@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Production build
+build/
+dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+.vitest-cache/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
